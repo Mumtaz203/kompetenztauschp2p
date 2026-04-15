@@ -19,5 +19,6 @@ public class TestResource {
     public String test() {
         em.createNativeQuery("SELECT 1").getSingleResult();
         return "DB connected";
+
     }
 }
