@@ -1,6 +1,6 @@
-package de.thws.kompetenz.auth.application.port.out;
+package de.thws.kompetenz.user.application.port.out;
 
-import de.thws.kompetenz.auth.domain.model.User;
+import de.thws.kompetenz.user.domain.model.User;
 
 import java.util.Optional;
 
@@ -11,4 +11,5 @@ public interface UserRepositoryPort {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
 }

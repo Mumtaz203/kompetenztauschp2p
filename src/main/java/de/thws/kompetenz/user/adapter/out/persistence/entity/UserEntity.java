@@ -1,4 +1,4 @@
-package de.thws.kompetenz.auth.adapter.out.persistence.entity;
+package de.thws.kompetenz.user.adapter.out.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -6,14 +6,18 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "app_user")
 public class UserEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @UuidGenerator
+    private UUID id;
 
     @Column(nullable = false, length = 50)
     private String username;
@@ -21,24 +25,24 @@ public class UserEntity {
     @Column(nullable = false, unique = true, length = 320)
     private String email;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 255)
     private String password;
 
     public UserEntity() {
     }
 
-    public UserEntity(Long id, String username, String email, String password) {
+    public UserEntity(UUID id, String username, String email, String password) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
