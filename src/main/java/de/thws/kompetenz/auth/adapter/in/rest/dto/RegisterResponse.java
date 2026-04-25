@@ -1,25 +1,27 @@
 package de.thws.kompetenz.auth.adapter.in.rest.dto;
 
+import java.util.UUID;
+
 public class RegisterResponse {
 
-    private Long id;
+    private UUID id;
     private String username;
     private String email;
 
     public RegisterResponse() {
     }
 
-    public RegisterResponse(Long id, String username, String email) {
+    public RegisterResponse(UUID id, String username, String email) {
         this.id = id;
         this.username = username;
         this.email = email;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

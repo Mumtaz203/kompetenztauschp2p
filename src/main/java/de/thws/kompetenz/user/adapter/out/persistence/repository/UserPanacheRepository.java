@@ -1,6 +1,6 @@
-package de.thws.kompetenz.auth.adapter.out.persistence.repository;
+package de.thws.kompetenz.user.adapter.out.persistence.repository;
 
-import de.thws.kompetenz.auth.adapter.out.persistence.entity.UserEntity;
+import de.thws.kompetenz.user.adapter.out.persistence.entity.UserEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 

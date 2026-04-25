@@ -1,7 +1,7 @@
-package de.thws.kompetenz.auth.adapter.in.rest.exception;
+package de.thws.kompetenz.auth.adapter.in.rest.error;
 
-import de.thws.kompetenz.auth.adapter.in.rest.error.ErrorResponse;
-import de.thws.kompetenz.auth.application.exception.EmailAlreadyExistsException;
+import de.thws.kompetenz.common.exception.ErrorResponse;
+import de.thws.kompetenz.user.domain.model.exception.EmailAlreadyExistsException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;

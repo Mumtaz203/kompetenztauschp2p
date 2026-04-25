@@ -1,4 +1,4 @@
-package de.thws.kompetenz.auth.adapter.in.rest.error;
+package de.thws.kompetenz.common.exception;
 
 public class ErrorResponse {
 
