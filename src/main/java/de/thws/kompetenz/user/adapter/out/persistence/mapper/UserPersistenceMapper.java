@@ -1,22 +1,22 @@
-package de.thws.kompetenz.auth.adapter.out.persistence.mapper;
+package de.thws.kompetenz.user.adapter.out.persistence.mapper;
 
-import de.thws.kompetenz.auth.adapter.out.persistence.entity.UserEntity;
-import de.thws.kompetenz.auth.domain.model.User;
+import de.thws.kompetenz.user.adapter.out.persistence.entity.UserEntity;
+import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class UserPersistenceMapper {
 
     public UserEntity toEntity(User user) {
-        if (user == null) {
-            return null;
-        }
-        return new UserEntity(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getPassword()
-        );
+        if (user == null) return null;
+
+        UserEntity entity = new UserEntity();
+        entity.setUsername(user.getUsername());
+        entity.setEmail(user.getEmail());
+        entity.setPassword(user.getPassword());
+
+        // ❗ id SET ETME
+        return entity;
     }
 
     public User toDomain(UserEntity entity) {

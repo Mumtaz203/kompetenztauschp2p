@@ -1,8 +1,10 @@
-package de.thws.kompetenz.auth.domain.model;
+package de.thws.kompetenz.user.domain.model;
+
+import java.util.UUID;
 
 public class User {
 
-    private Long id;
+    private UUID id;
     private String username;
     private String email;
     private String password;
@@ -10,7 +12,7 @@ public class User {
     public User() {
     }
 
-    public User(Long id, String username, String email, String password) {
+    public User(UUID id, String username, String email, String password) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -23,11 +25,11 @@ public class User {
         this.password = password;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

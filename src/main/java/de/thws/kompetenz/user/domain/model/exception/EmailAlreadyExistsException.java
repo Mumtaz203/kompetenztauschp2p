@@ -1,4 +1,4 @@
-package de.thws.kompetenz.auth.application.exception;
+package de.thws.kompetenz.user.domain.model.exception;
 
 public class EmailAlreadyExistsException extends RuntimeException {
 
