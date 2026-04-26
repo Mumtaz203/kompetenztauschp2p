@@ -11,7 +11,7 @@ public class AuthRestMapper {
     /*
     To convert external input into the internal model
      */
-    public User toDomain(RegisterRequest request){
+    public User toDomain(RegisterRequest request){ //accessing domaın from adapter ask the proffessor about this
         return new User(
                 request.getUsername(),
                 request.getEmail(),

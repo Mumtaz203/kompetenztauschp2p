@@ -40,7 +40,6 @@ public class LoginService implements ILoginUseCase {
             throw new InvalidCredentialsException();
         }
 
-        //Change later with JWT !!
         return tokenProvider.generateToken(user.getId(), user.getEmail());
     }
 }
