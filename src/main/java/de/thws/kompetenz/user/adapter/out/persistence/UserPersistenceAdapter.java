@@ -9,7 +9,9 @@ import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @ApplicationScoped
 public class UserPersistenceAdapter implements UserRepositoryPort {
@@ -26,14 +28,32 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     @Override
     @Transactional
     public User save(User user) {
-        try {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
+
+        // create
+        if (user.getId() == null) {
             UserEntity entity = userPersistenceMapper.toEntity(user);
             userPanacheRepository.persist(entity);
             return userPersistenceMapper.toDomain(entity);
-        } catch (PersistenceException e) {
-            // optionally map DB constraint to domain exception later
-            throw e;
         }
+
+        // update
+        UserEntity existing = userPanacheRepository.findUserById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + user.getId()));
+
+        existing.setUsername(user.getUsername());
+        existing.setEmail(user.getEmail());
+        existing.setPassword(user.getPassword());
+        existing.setOfferedSkills(user.getOfferedSkills());
+        existing.setWantedSkills(user.getWantedSkills());
+
+        return userPersistenceMapper.toDomain(existing);
+
+        //save method is now used for both create and update . Later it will be fixed
+        //its necessery to control if id exists in order to update the user data
+
     }
 
     @Override
@@ -44,5 +64,18 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     @Override
     public boolean existsByEmail(String email) {
         return userPanacheRepository.existsByEmail(email);
+    }
+
+
+    @Override
+    public List<User> searchBySkill(String skill) {
+        return userPanacheRepository.findUsersBySkill(skill).stream()
+                .map(userPersistenceMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<User> findUserById(UUID userId) {
+        return userPanacheRepository.findUserById(userId).map(userPersistenceMapper::toDomain);
     }
 }

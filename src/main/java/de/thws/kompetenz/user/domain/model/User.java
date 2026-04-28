@@ -1,5 +1,6 @@
 package de.thws.kompetenz.user.domain.model;
 
+import java.util.List;
 import java.util.UUID;
 
 public class User {
@@ -8,6 +9,8 @@ public class User {
     private String username;
     private String email;
     private String password;
+    private List<String> offeredSkills;
+    private List<String> wantedSkills;
 
     public User() {
     }
@@ -55,5 +58,17 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+    public List<String> getOfferedSkills() {
+        return offeredSkills;
+    }
+    public void setOfferedSkills(List<String> offeredSkills) {
+        this.offeredSkills = offeredSkills;
+    }
+    public List<String> getWantedSkills() {
+        return wantedSkills;
+    }
+    public void setWantedSkills(List<String> wantedSkills) {
+        this.wantedSkills = wantedSkills;
     }
 }
