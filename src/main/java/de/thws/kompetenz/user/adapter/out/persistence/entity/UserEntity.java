@@ -1,13 +1,10 @@
 package de.thws.kompetenz.user.adapter.out.persistence.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -27,6 +24,16 @@ public class UserEntity {
 
     @Column(nullable = false, length = 255)
     private String password;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "user_offered_skills", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "skill", nullable = false, length = 100)
+    private List<String> offeredSkills = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "user_wanted_skills", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "skill", nullable = false, length = 100)
+    private List<String> wantedSkills = new ArrayList<>();
 
     public UserEntity() {
     }
@@ -69,4 +76,10 @@ public class UserEntity {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public List<String> getOfferedSkills() { return offeredSkills; }
+    public void setOfferedSkills(List<String> offeredSkills) { this.offeredSkills = offeredSkills; }
+
+    public List<String> getWantedSkills() { return wantedSkills; }
+    public void setWantedSkills(List<String> wantedSkills) { this.wantedSkills = wantedSkills; }
 }
