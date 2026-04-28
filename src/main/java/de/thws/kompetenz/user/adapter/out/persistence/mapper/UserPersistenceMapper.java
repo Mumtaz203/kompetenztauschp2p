@@ -20,7 +20,6 @@ public class UserPersistenceMapper {
         entity.setOfferedSkills(copy(user.getOfferedSkills()));
         entity.setWantedSkills(copy(user.getWantedSkills()));
 
-        // ❗ id SET ETME
         return entity;
     }
 
