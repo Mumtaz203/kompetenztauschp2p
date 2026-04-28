@@ -8,12 +8,10 @@ import de.thws.kompetenz.auth.adapter.in.rest.mapper.AuthRestMapper;
 import de.thws.kompetenz.auth.application.port.in.ILoginUseCase;
 import de.thws.kompetenz.auth.application.port.in.RegisterUseCase;
 import de.thws.kompetenz.user.domain.model.User;
+import io.quarkus.security.Authenticated;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -52,7 +50,8 @@ public class AuthResource {
 
     @POST
     @Path("/login")
-    public Response login(@Valid LoginRequest request) {
+    public Response login(@Valid LoginRequest request) { /* would ıt be cleaner to use a LogınCommand class and a mapper to thıs class ınstead to map from user
+                                                            to request*/
 
         String token = loginUseCase.login(
                 request.getEmail(),
@@ -62,5 +61,12 @@ public class AuthResource {
         LoginResponse response = new LoginResponse(token);
 
         return Response.ok(response).build();
+    }
+
+    @GET
+    @Path("/test")
+    @Authenticated //when authenticated is used it automatically uses publicKey.pem
+    public String test() {
+        return "secured";
     }
 }
