@@ -9,4 +9,6 @@ import java.util.List;
 
 public interface SearchUserUseCase {
     List<User> searchBySkill(String skill);
+
+    List<User> searchBySkills(List<String> skills);
 }
