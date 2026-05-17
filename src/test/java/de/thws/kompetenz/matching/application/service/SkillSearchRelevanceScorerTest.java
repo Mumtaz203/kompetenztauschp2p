@@ -58,6 +58,19 @@ class SkillSearchRelevanceScorerTest {
     }
 
     @Test
+    void rankUser_countsMatchedTermsAndExactMatches() {
+        User user = user("sql_java_user", "sql", "java");
+        SkillSearchRelevanceScorer.MatchRanking ranking =
+                SkillSearchRelevanceScorer.rankUser(user, List.of("mysql", "java"));
+
+        assertEquals(10, ranking.score());
+        assertEquals(1, ranking.matchedTermCount());
+        assertEquals(1, ranking.exactMatchCount());
+        assertEquals(0, ranking.partialMatchCount());
+        assertEquals(2, ranking.offeredSkillsCount());
+    }
+
+    @Test
     void scoreForTerm_isCaseInsensitive() {
         assertEquals(SkillSearchRelevanceScorer.EXACT_MATCH_SCORE,
                 SkillSearchRelevanceScorer.scoreForTerm("SQL", List.of("sql")));

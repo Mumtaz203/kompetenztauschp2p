@@ -93,6 +93,32 @@ class SearchUserServiceTest {
     }
 
     @Test
+    void searchBySkills_breaksEqualScoresUsingMatchAndOfferedSkillTieBreakers() {
+        User javaExactUser = user("java_exact_user", "java");
+        User mysqlUser = user("mysql_partial_user", "mysql");
+        when(userRepositoryPort.findCandidatesByOfferedSkills(eq(List.of("mysql", "java"))))
+                .thenReturn(List.of(javaExactUser, mysqlUser, sqlJavaUser));
+
+        List<User> results = searchUserService.searchBySkills(List.of("mysql", "java"));
+
+        assertEquals(
+                List.of("sql_java_user", "java_exact_user", "mysql_partial_user"),
+                results.stream().map(User::getUsername).toList());
+    }
+
+    @Test
+    void searchBySkills_prefersMoreMatchedTermsWhenScoresAreEqual() {
+        User javaExactUser = user("java_exact_user", "java");
+        User mysqlJavaUser = user("mysql_java_user", "mysql", "java");
+        when(userRepositoryPort.findCandidatesByOfferedSkills(eq(List.of("mysql", "java"))))
+                .thenReturn(List.of(javaExactUser, mysqlJavaUser));
+
+        List<User> results = searchUserService.searchBySkills(List.of("mysql", "java"));
+
+        assertEquals("mysql_java_user", results.getFirst().getUsername());
+    }
+
+    @Test
     void searchBySkills_isCaseInsensitiveForTerms() {
         when(userRepositoryPort.findCandidatesByOfferedSkills(eq(List.of("sql"))))
                 .thenReturn(List.of(sqlExactUser, mysqlPartialUser));
