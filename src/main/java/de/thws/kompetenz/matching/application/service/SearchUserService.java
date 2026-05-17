@@ -42,17 +42,23 @@ public class SearchUserService implements SearchUserUseCase {
             return List.of();
         }
 
-        Map<UUID, User> candidatesById = new LinkedHashMap<>();
+        Map<UUID, ScoredUser> uniqueResults = new LinkedHashMap<>();
         for (User candidate : userRepositoryPort.findCandidatesByOfferedSkills(searchTerms)) {
-            candidatesById.putIfAbsent(candidate.getId(), candidate);
+            if (candidate == null || candidate.getId() == null) {
+                continue;
+            }
+            int score = SkillSearchRelevanceScorer.calculateScore(candidate, searchTerms);
+            if (score == 0) {
+                continue;
+            }
+            uniqueResults.merge(
+                    candidate.getId(),
+                    new ScoredUser(candidate, score),
+                    SearchUserService::keepHigherScoredUser
+            );
         }
 
-        record ScoredUser(User user, int score) {
-        }
-
-        return candidatesById.values().stream()
-                .map(user -> new ScoredUser(user, SkillSearchRelevanceScorer.calculateScore(user, searchTerms)))
-                .filter(scored -> scored.score() > 0)
+        return uniqueResults.values().stream()
                 .sorted(Comparator
                         .comparingInt(ScoredUser::score).reversed()
                         .thenComparing(scored -> scored.user().getUsername(),
@@ -61,5 +67,12 @@ public class SearchUserService implements SearchUserUseCase {
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(ScoredUser::user)
                 .toList();
+    }
+
+    private static ScoredUser keepHigherScoredUser(ScoredUser existing, ScoredUser incoming) {
+        return incoming.score() > existing.score() ? incoming : existing;
+    }
+
+    private record ScoredUser(User user, int score) {
     }
 }
