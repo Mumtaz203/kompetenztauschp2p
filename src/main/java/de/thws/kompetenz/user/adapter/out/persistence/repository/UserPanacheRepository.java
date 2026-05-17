@@ -79,7 +79,7 @@ public class UserPanacheRepository implements PanacheRepository<UserEntity> {
             if (i > 0) {
                 jpql.append(" or ");
             }
-            jpql.append("lower(os) like ?").append(i + 1);
+            jpql.append(" lower(os) like ?").append(i + 1);
             params.add("%" + terms.get(i) + "%");
         }
         return find(jpql.toString(), params.toArray()).list();
