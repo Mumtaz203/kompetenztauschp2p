@@ -5,9 +5,10 @@ import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -21,7 +22,10 @@ public class SearchUserService implements SearchUserUseCase {
 
     @Override
     public List<User> searchBySkill(String skill) {
-        return userRepositoryPort.searchBySkill(skill);
+        if (skill == null || skill.isBlank()) {
+            return List.of();
+        }
+        return searchBySkills(List.of(skill.trim().toLowerCase(Locale.ROOT)));
     }
 
     @Override
@@ -29,16 +33,33 @@ public class SearchUserService implements SearchUserUseCase {
         if (skills == null || skills.isEmpty()) {
             return List.of();
         }
-        if (skills.size() == 1) {
-            return userRepositoryPort.searchBySkill(skills.getFirst());
+
+        List<String> searchTerms = skills.stream()
+                .filter(term -> term != null && !term.isBlank())
+                .map(term -> term.trim().toLowerCase(Locale.ROOT))
+                .toList();
+        if (searchTerms.isEmpty()) {
+            return List.of();
         }
 
-        Map<UUID, User> usersById = new LinkedHashMap<>();
-        for (String term : skills) {
-            for (User user : userRepositoryPort.searchBySkill(term)) {
-                usersById.putIfAbsent(user.getId(), user);
-            }
+        Map<UUID, User> candidatesById = new LinkedHashMap<>();
+        for (User candidate : userRepositoryPort.findCandidatesByOfferedSkills(searchTerms)) {
+            candidatesById.putIfAbsent(candidate.getId(), candidate);
         }
-        return new ArrayList<>(usersById.values());
+
+        record ScoredUser(User user, int score) {
+        }
+
+        return candidatesById.values().stream()
+                .map(user -> new ScoredUser(user, SkillSearchRelevanceScorer.calculateScore(user, searchTerms)))
+                .filter(scored -> scored.score() > 0)
+                .sorted(Comparator
+                        .comparingInt(ScoredUser::score).reversed()
+                        .thenComparing(scored -> scored.user().getUsername(),
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(scored -> scored.user().getId(),
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(ScoredUser::user)
+                .toList();
     }
 }
