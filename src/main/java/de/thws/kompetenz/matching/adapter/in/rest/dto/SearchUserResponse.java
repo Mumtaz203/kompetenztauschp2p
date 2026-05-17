@@ -23,10 +23,11 @@ public class SearchUserResponse {
     }
 
 
+    public UUID getId() { return id; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
-    public List<String> getOfferedSkills() { return offeredSkills; }
-    public List<String> getWantedSkills() { return wantedSkills; }
+    public List<String> getOfferedSkills() { return offeredSkills != null ? offeredSkills : List.of(); }
+    public List<String> getWantedSkills() { return wantedSkills != null ? wantedSkills : List.of(); }
 
     public void setId(UUID id) { this.id = id; }
     public void setUsername(String username) { this.username = username; }

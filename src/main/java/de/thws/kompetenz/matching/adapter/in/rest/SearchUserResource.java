@@ -8,6 +8,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Path("/users")
@@ -37,9 +38,13 @@ public class SearchUserResource {
                     .build();
         }
 
-        List<SearchUserResponse> response = searchUserUseCase.searchBySkills(searchTerms).stream()
-                .map(searchUserMapper::toSearchUserResponse)
-                .toList();
+        List<SearchUserResponse> response = new ArrayList<>();
+        for (var user : searchUserUseCase.searchBySkills(searchTerms)) {
+            SearchUserResponse mapped = searchUserMapper.toSearchUserResponse(user);
+            if (mapped != null) {
+                response.add(mapped);
+            }
+        }
 
         return Response.ok(response).build();
     }
