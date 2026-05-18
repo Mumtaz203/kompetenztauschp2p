@@ -1,15 +1,16 @@
 package de.thws.kompetenz.auth.adapter.in.rest;
 
-import de.thws.kompetenz.auth.adapter.in.rest.dto.LoginRequest;
-import de.thws.kompetenz.auth.adapter.in.rest.dto.LoginResponse;
-import de.thws.kompetenz.auth.adapter.in.rest.dto.RegisterRequest;
-import de.thws.kompetenz.auth.adapter.in.rest.dto.RegisterResponse;
+import de.thws.kompetenz.auth.adapter.in.rest.dto.*;
 import de.thws.kompetenz.auth.adapter.in.rest.mapper.AuthRestMapper;
+import de.thws.kompetenz.auth.application.command.LoginCommand;
+import de.thws.kompetenz.auth.application.command.RegisterCommand;
 import de.thws.kompetenz.auth.application.port.in.IGetCurrentUserUseCase;
 import de.thws.kompetenz.auth.application.port.in.ILoginUseCase;
 import de.thws.kompetenz.auth.application.port.in.RegisterUseCase;
+import de.thws.kompetenz.auth.application.result.RegisterResult;
 import de.thws.kompetenz.user.domain.model.User;
 import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -48,12 +49,14 @@ public class AuthResource {
 
     @POST
     @Path("/register")
+    @PermitAll
     public Response register(@Valid RegisterRequest request) {
 
-        User newUser = authRestMapper.toDomain(request);
+        RegisterCommand registerCommand = authRestMapper.toRegisterCommand(request);
 
-        User createdUser = registerUseCase.register(newUser);
-        RegisterResponse response = authRestMapper.toResponse(createdUser);
+        RegisterResult result = registerUseCase.register(registerCommand);
+
+        RegisterResponse response = authRestMapper.toRegisterResponse(result);
 
         return Response.status(Response.Status.CREATED).
                 entity(response).
@@ -62,15 +65,14 @@ public class AuthResource {
 
     @POST
     @Path("/login")
+    @PermitAll
     public Response login(@Valid LoginRequest request) { /* would ıt be cleaner to use a LogınCommand class and a mapper to thıs class ınstead to map from user
                                                             to request*/
 
-        String token = loginUseCase.login(
-                request.getEmail(),
-                request.getPassword()
-        );
+        LoginCommand loginCommand = authRestMapper.toLoginCommand(request);
+        String token = loginUseCase.login(loginCommand);
 
-        LoginResponse response = new LoginResponse(token);
+        LoginResponse response = authRestMapper.toLoginResponse(token);
 
         return Response.ok(response).build();
     }
@@ -93,7 +95,7 @@ public class AuthResource {
                 UUID.fromString(userId)
         );
 
-        RegisterResponse response = authRestMapper.toResponse(user);
+        CurrentUserReponse response = authRestMapper.toCurrentUserResponse(user);
 
         return Response.ok(response).build();
     }
