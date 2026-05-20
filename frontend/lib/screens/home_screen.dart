@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../core/app_colors.dart';
+import '../services/auth_service.dart';
+import '../models/user_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +16,54 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
   int _selectedIndex = 0;
 
+  // This future will hold the list of suggested users to display on the home screen
+  late Future<List<UserModel>> _suggestedUsersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // when the screen loads, fetch suggested users from the backend
+    _suggestedUsersFuture = _fetchSuggestedUsers();
+  }
+
+  Future<List<UserModel>> _fetchSuggestedUsers() async {
+    try {
+      final token = await AuthService.getStoredToken();
+
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/users/getAllUsers'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decodedData = jsonDecode(response.body);
+        List<dynamic> usersList = [];
+
+        if (decodedData is Map && decodedData.containsKey('users')) {
+          usersList = decodedData['users'];
+        } else if (decodedData is List) {
+          usersList = decodedData;
+        }
+
+        List<UserModel> allUsers = usersList.map((json) => UserModel.fromJson(json)).toList();
+
+        final myId = await AuthService.getStoredUserId();
+        if (myId != null) {
+          allUsers.removeWhere((user) => user.id == myId);
+        }
+        allUsers.shuffle();
+        return allUsers.take(3).toList();
+      } else {
+        throw Exception('Server cancelled: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching users: $e');
+    }
+  }
+
   void _onSearchSubmitted(String query) {
     if (query.trim().isNotEmpty) {
       Navigator.pushNamed(context, '/search', arguments: query.trim());
@@ -20,9 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
-
     setState(() => _selectedIndex = index);
-
     switch (index) {
       case 0:
         break;
@@ -68,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
+              // Logo
               Center(
                 child: SizedBox(
                   height: 64,
@@ -178,50 +229,87 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF1E293B).withOpacity(0.5)
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: isDark ? Colors.white12 : Colors.grey.shade200
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_alt_outlined,
-                        size: 48,
-                        color: isDark ? Colors.white.withOpacity(0.2) : Colors.black12,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Suggested matches will appear here.',
-                        style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.black54,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                child: FutureBuilder<List<UserModel>>(
+                  future: _suggestedUsersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'backend is still in development.',
-                        style: TextStyle(
-                          color: isDark ? Colors.white38 : Colors.black38,
-                          fontSize: 13,
+                      );
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No users found.',
+                          style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
                         ),
-                      ),
-                    ],
-                  ),
+                      );
+                    }
+
+                    final suggestedUsers = snapshot.data!;
+
+                    return ListView.separated(
+                      itemCount: suggestedUsers.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final user = suggestedUsers[index];
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B).withOpacity(0.5) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.primaryBlue.withOpacity(0.2),
+                              child: Text(
+                                user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+                                style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(
+                              user.username,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              user.offeredSkills.isNotEmpty
+                                  ? 'Teaches: ${user.offeredSkills.join(", ")}'
+                                  : 'No skills added yet',
+                              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                            onTap: () {
+                              Navigator.pushNamed(context, '/user-profile', arguments: {
+                                'userId': user.id,
+                                'username': user.username,
+                                'email': user.email,
+                                'offeredSkills': user.offeredSkills,
+                                'wantedSkills': user.wantedSkills,
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
