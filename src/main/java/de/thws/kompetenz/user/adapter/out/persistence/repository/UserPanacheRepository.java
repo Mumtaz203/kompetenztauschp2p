@@ -84,4 +84,7 @@ public class UserPanacheRepository implements PanacheRepository<UserEntity> {
         }
         return find(jpql.toString(), params.toArray()).list();
     }
+    public List<UserEntity> findAllUsers(){
+        return findAll().list();
+    }
 }
