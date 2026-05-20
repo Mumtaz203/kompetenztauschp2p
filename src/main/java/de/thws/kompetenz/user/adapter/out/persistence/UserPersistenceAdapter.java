@@ -75,6 +75,13 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public List<User> findCandidatesByOfferedSkills(List<String> skills) {
+        return userPanacheRepository.findUsersByOfferedSkillsContainingAny(skills).stream()
+                .map(userPersistenceMapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<User> findUserById(UUID userId) {
         return userPanacheRepository.findUserById(userId).map(userPersistenceMapper::toDomain);
     }
