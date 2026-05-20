@@ -1,30 +1,61 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import '../models/auth_response_model.dart';
 
 class AuthService {
   static const String baseUrl = 'http://10.0.2.2:8081';
 
-  Future<String> login({
+  Future<AuthResponseModel> login({
     required String email,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['token'];
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final authResponse = AuthResponseModel.fromJson(data);
+
+        final prefs = await SharedPreferences.getInstance();
+
+        await prefs.setString('jwt_token', authResponse.token);
+
+        Map<String, dynamic> decodedToken = JwtDecoder.decode(authResponse.token);
+
+
+        String myId = decodedToken['sub']?.toString() ??
+            decodedToken['id']?.toString() ??
+            decodedToken['upn']?.toString() ?? '';
+
+        await prefs.setString('my_user_id', myId);
+
+        return authResponse;
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('Email or password is incorrect. Please try again.');
+      } else {
+        throw Exception('Failed to login. Server responded with status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
     }
+  }
 
-    throw Exception(response.body);
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('my_user_id');
   }
 
   Future<void> register({
