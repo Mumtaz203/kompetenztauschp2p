@@ -1,9 +1,10 @@
 package de.thws.kompetenz.auth.application.port.in;
 
 
-import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.auth.application.command.RegisterCommand;
+import de.thws.kompetenz.auth.application.result.RegisterResult;
 
 public interface RegisterUseCase {
 
-    User register(User user);
+    RegisterResult register(RegisterCommand registerCommand);
 }

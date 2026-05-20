@@ -1,4 +1,4 @@
-package de.thws.kompetenz.auth.application.port.in;
+package de.thws.kompetenz.auth.application.port.out;
 
 import java.util.UUID;
 

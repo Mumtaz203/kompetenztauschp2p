@@ -2,11 +2,9 @@ package de.thws.kompetenz.auth.adapter.in.rest.dto;
 
 import java.util.UUID;
 
-public record RegisterResponse(
+public record CurrentUserReponse(
         UUID id,
         String username,
-        String email,
-        String token,
-        String tokenType
+        String email
 ) {
 }
