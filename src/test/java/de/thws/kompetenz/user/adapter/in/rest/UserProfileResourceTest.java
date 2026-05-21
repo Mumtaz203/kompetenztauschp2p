@@ -2,6 +2,7 @@ package de.thws.kompetenz.user.adapter.in.rest;
 
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.*;
 import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
+import de.thws.kompetenz.user.application.port.in.IGetUserByIdUseCase;
 import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 import de.thws.kompetenz.user.domain.model.User;
 import io.quarkus.test.InjectMock;
@@ -31,7 +32,12 @@ class UserProfileResourceTest {
     @InjectMock
     UserRestMapper userRestMapper;
 
+    @InjectMock
+    IGetUserByIdUseCase getUserByIdUseCase;
+
     UserProfileResource resource;
+
+
 
     private final UUID userId = UUID.randomUUID();
     private User testUser;
@@ -39,7 +45,7 @@ class UserProfileResourceTest {
 
     @BeforeEach
     void setup() {
-        resource = new UserProfileResource(updateUserProfileUseCase, userRestMapper);
+        resource = new UserProfileResource(updateUserProfileUseCase, getUserByIdUseCase, userRestMapper);
 
         testUser = new User();
         testUser.setId(userId);
