@@ -4,10 +4,12 @@ import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.MessageRestMapper;
 import de.thws.kompetenz.chatting.application.port.in.MessageUseCaseI;
 import de.thws.kompetenz.chatting.domain.Message;
-import io.restassured.internal.http.HttpResponseException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,8 +18,6 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
@@ -25,6 +25,15 @@ class MessageResourceTest {
 
     @InjectMock MessageUseCaseI messageUseCase;
     @InjectMock MessageRestMapper messageRestMapper;
+
+    @InjectMock
+    JsonWebToken jwt;          // Keep this
+
+    @BeforeEach
+    void setup() {
+        // This is now safe
+        Mockito.when(jwt.getSubject()).thenReturn(UUID.randomUUID().toString());
+    }
 
     @Test
     void sendMessage_returns201() {
@@ -73,9 +82,10 @@ class MessageResourceTest {
         UUID id = UUID.randomUUID();
         when(messageUseCase.getMessageById(id)).thenReturn(Optional.empty());
 
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().when().get("/messages/{id}", id));
-        assertTrue(ex.getMessage().contains("status code: 404"));
+        given()
+                .when().get("/messages/{id}", id)
+                .then()
+                .statusCode(404);
     }
 
     @Test

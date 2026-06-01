@@ -2,7 +2,6 @@ package de.thws.kompetenz.matching.adapter.in.rest;
 
 import de.thws.kompetenz.matching.application.port.in.SearchUserUseCase;
 import de.thws.kompetenz.user.domain.model.User;
-import io.restassured.internal.http.HttpResponseException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -12,8 +11,6 @@ import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,23 +23,33 @@ class SearchUserResourceTest {
 
     @Test
     void search_returns400_whenNoSearchTermsProvided() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+
+        given()
+                .when().get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test
     void search_returns400_whenTermIsTooShort() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().queryParam("skills", "js").when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+        given().queryParam("skills", "js")
+                .when()
+                .get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test
     void search_returns400_whenSkillsParameterIsBlank() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().queryParam("skills", "   ").when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+
+
+        given()
+                .when().get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test

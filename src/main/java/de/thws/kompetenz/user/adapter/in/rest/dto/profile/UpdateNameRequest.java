@@ -12,6 +12,10 @@ public class UpdateNameRequest {
     public UpdateNameRequest() {
     }
 
+    public UpdateNameRequest(String name) {
+        this.name = name;
+    }
+
     public String getName() {
         return name;
     }
