@@ -13,7 +13,13 @@ import de.thws.kompetenz.user.domain.model.User;
 import io.restassured.internal.http.HttpResponseException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +40,15 @@ class ConversationResourceTest {
     @InjectMock UserRepositoryPort userRepositoryPort;
     @InjectMock MessageUseCaseI messageUseCase;
     @InjectMock MessageRestMapper messageRestMapper;
+
+    @InjectMock
+    JsonWebToken jwt;          // Keep this
+
+    @BeforeEach
+    void setup() {
+        // This is now safe
+        Mockito.when(jwt.getSubject()).thenReturn(UUID.randomUUID().toString());
+    }
 
     @Test
     void createConversation_returns200_withCreatedEntityPayload() {
@@ -94,9 +109,10 @@ class ConversationResourceTest {
         UUID id = UUID.randomUUID();
         when(conversationUseCase.getConversationById(id)).thenReturn(Optional.empty());
 
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().when().get("/conversations/{id}", id));
-        assertTrue(ex.getMessage().contains("status code: 404"));
+        given()
+                .when().get("/conversations/{id}", id)
+                .then()
+                .statusCode(404);
     }
 
     @Test
@@ -158,12 +174,12 @@ class ConversationResourceTest {
 
         when(conversationUseCase.findBetweenUsers(user1, user2)).thenReturn(Optional.empty());
 
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given()
-                        .queryParam("user1Id", user1)
-                        .queryParam("user2Id", user2)
-                        .when().get("/conversations/between"));
-        assertTrue(ex.getMessage().contains("status code: 404"));
+        given()
+                .queryParam("user1Id", user1)
+                .queryParam("user2Id", user2)
+                .when().get("/conversations/between")
+                .then()
+                .statusCode(404);
     }
 
     @Test
@@ -238,8 +254,9 @@ class ConversationResourceTest {
         UUID conversationId = UUID.randomUUID();
         when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.empty());
 
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().when().get("/conversations/{id}/details", conversationId));
-        assertTrue(ex.getMessage().contains("status code: 404"));
+        given()
+                .when().get("/conversations/{id}/details", conversationId)
+                .then()
+                .statusCode(404);
     }
 }

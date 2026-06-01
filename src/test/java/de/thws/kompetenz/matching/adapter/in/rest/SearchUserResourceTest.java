@@ -26,23 +26,33 @@ class SearchUserResourceTest {
 
     @Test
     void search_returns400_whenNoSearchTermsProvided() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+
+        given()
+                .when().get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test
     void search_returns400_whenTermIsTooShort() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().queryParam("skills", "js").when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+        given().queryParam("skills", "js")
+                .when()
+                .get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test
     void search_returns400_whenSkillsParameterIsBlank() {
-        HttpResponseException ex = assertThrows(HttpResponseException.class,
-                () -> given().queryParam("skills", "   ").when().get("/users/search"));
-        assertTrue(ex.getMessage().contains("status code: 400"));
+
+
+        given()
+                .when().get("/users/search")
+                .then()
+                .statusCode(400);
+
     }
 
     @Test

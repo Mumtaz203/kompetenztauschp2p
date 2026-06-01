@@ -9,6 +9,12 @@ public class UpdateSkillsRequest {
     public UpdateSkillsRequest() {
     }
 
+    //added for test class purposes
+    public UpdateSkillsRequest(List<String> offeredSkills, List<String> wantedSkills) {
+        this.offeredSkills = offeredSkills;
+        this.wantedSkills = wantedSkills;
+    }
+
     public List<String> getOfferedSkills() {
         return offeredSkills;
     }
