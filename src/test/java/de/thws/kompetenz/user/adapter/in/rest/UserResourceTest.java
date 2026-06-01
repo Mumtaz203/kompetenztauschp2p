@@ -67,11 +67,9 @@ class UserResourceTest {
         UUID id = UUID.randomUUID();
         when(userRepositoryPort.findUserById(id)).thenReturn(Optional.empty());
 
-        given()
-                .when()
-                .get("/users/getUser/{id}", id)
-                        .then()
-                                .statusCode(404);
+        HttpResponseException ex = assertThrows(HttpResponseException.class,
+                () -> given().when().get("/users/getUser/{id}", id));
+        assertTrue(ex.getMessage().contains("status code: 404"));
     }
 
     private static User user(String username, String... offeredSkills) {

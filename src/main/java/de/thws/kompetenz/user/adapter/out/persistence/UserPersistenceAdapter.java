@@ -85,4 +85,11 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     public Optional<User> findUserById(UUID userId) {
         return userPanacheRepository.findUserById(userId).map(userPersistenceMapper::toDomain);
     }
+
+    @Override
+    public List<User> findAllUsers() {
+      return  userPanacheRepository.findAllUsers().stream()
+              .map(ue->userPersistenceMapper.toDomain(ue))
+              .toList();
+    }
 }

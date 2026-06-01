@@ -1,7 +1,8 @@
 package de.thws.kompetenz.auth.application.service;
 
+import de.thws.kompetenz.auth.application.command.LoginCommand;
 import de.thws.kompetenz.auth.application.port.in.ILoginUseCase;
-import de.thws.kompetenz.auth.application.port.in.ITokenProviderPort;
+import de.thws.kompetenz.auth.application.port.out.ITokenProviderPort;
 import de.thws.kompetenz.auth.application.port.out.IPasswordHasherPort;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
@@ -27,14 +28,14 @@ public class LoginService implements ILoginUseCase {
 
 
     @Override
-    public String login(String email, String password){
+    public String login(LoginCommand loginCommand){
 
-        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = loginCommand.email().trim().toLowerCase(Locale.ROOT);
 
         User user = userRepositoryPort.findByEmail(normalizedEmail).orElseThrow(
                 () -> new InvalidCredentialsException());
 
-        boolean matches = passwordHasherPort.verify(password, user.getPassword());
+        boolean matches = passwordHasherPort.verify(loginCommand.password(), user.getPassword());
 
         if(!matches){
             throw new InvalidCredentialsException();

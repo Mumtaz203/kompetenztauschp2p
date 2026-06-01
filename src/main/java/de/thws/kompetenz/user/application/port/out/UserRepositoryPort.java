@@ -20,4 +20,6 @@ public interface UserRepositoryPort {
     List<User> findCandidatesByOfferedSkills(List<String> skills);
 
     Optional<User>findUserById(UUID userId);
+
+    List<User> findAllUsers();
 }
