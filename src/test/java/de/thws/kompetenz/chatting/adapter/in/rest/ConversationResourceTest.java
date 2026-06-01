@@ -10,12 +10,8 @@ import de.thws.kompetenz.chatting.domain.Conversation;
 import de.thws.kompetenz.chatting.domain.Message;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
-import io.restassured.internal.http.HttpResponseException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
-import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,8 +24,7 @@ import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import static org.mockito.Mockito.when;
 
 @QuarkusTest

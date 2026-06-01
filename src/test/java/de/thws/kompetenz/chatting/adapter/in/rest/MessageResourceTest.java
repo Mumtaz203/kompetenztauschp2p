@@ -4,7 +4,6 @@ import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.MessageRestMapper;
 import de.thws.kompetenz.chatting.application.port.in.MessageUseCaseI;
 import de.thws.kompetenz.chatting.domain.Message;
-import io.restassured.internal.http.HttpResponseException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -19,8 +18,6 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest

@@ -9,12 +9,14 @@ import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateNameRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateSkillsRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateUserRequest;
 import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.user.domain.model.exception.UserNotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/users")
@@ -52,13 +54,20 @@ public class UserProfileResource {
     @PUT
     @Path("/{id}/updateUser")
     public Response updateUser(@PathParam("id") UUID userId, @Valid UpdateUserRequest updateUserRequest) {
-        User incoming = new User();
-        incoming.setUsername(updateUserRequest.getUsername());
-        incoming.setOfferedSkills(updateUserRequest.getOfferedSkills());
-        incoming.setWantedSkills(updateUserRequest.getWantedSkills());
+        try{
+            User incoming = new User();
+            incoming.setUsername(updateUserRequest.getUsername());
+            incoming.setOfferedSkills(updateUserRequest.getOfferedSkills());
+            incoming.setWantedSkills(updateUserRequest.getWantedSkills());
 
-        User updated=updateUserProfileUseCase.updateUser(userId,incoming);
-        return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
+            User updated=updateUserProfileUseCase.updateUser(userId,incoming);
+            return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
+        }catch (UserNotFoundException e){
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("message", e.getMessage()))
+                    .build();
+        }
+
     }
 
 
