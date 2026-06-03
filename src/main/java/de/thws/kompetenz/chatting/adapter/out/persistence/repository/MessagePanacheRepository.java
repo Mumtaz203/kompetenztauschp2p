@@ -17,4 +17,8 @@ public class MessagePanacheRepository implements PanacheRepositoryBase<MessageEn
     public List<MessageEntity> findByConversationId(UUID conversationId) {
         return find("conversationEntity.id = ?1 order by sentAt asc", conversationId).list();
     }
+
+    public List<MessageEntity> getAllMessagesByUserId(UUID userId){
+        return find("senderId = ?1 order by sentAt asc",userId).list();
+    }
 }

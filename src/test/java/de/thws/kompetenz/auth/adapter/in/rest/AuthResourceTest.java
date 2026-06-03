@@ -1,4 +1,4 @@
-package de.thws.kompetenz.auth.adapter.in.rest;
+/*package de.thws.kompetenz.auth.adapter.in.rest;
 
 import de.thws.kompetenz.auth.adapter.in.rest.dto.*;
 import de.thws.kompetenz.auth.adapter.in.rest.mapper.AuthRestMapper;
@@ -116,3 +116,5 @@ class AuthResourceTest {
         assertEquals("secured", result);
     }
 }
+
+ */

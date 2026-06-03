@@ -16,4 +16,6 @@ public interface ConversationUseCaseI {
     Optional<Conversation> findBetweenUsers(UUID user1Id, UUID user2Id);
     Conversation deleteConversation(UUID conversationId);
 
+
+
 }

@@ -85,4 +85,61 @@ public class MessageService implements MessageUseCaseI {
         }
         messageRepository.markAsRead(messageId);
     }
+
+    @Override
+    public Message deleteMessage(UUID messageId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+
+        boolean deleted = messageRepository.deleteMessageById(messageId);
+        if (!deleted) {
+            throw new IllegalArgumentException("Message with ID " + messageId + " could not be deleted");
+        }
+        return message;
+    }
+
+    @Override
+    public Message updateMessage(UUID messageId, Message message) {
+        if (messageId == null) {
+            throw new IllegalArgumentException("Message ID cannot be null");
+        }
+        if (message == null) {
+            throw new IllegalArgumentException("Message cannot be null");
+        }
+
+        Message existing = messageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+
+        // Keep runtime-controlled fields stable unless explicitly provided.
+        if (message.getConversationId() == null) {
+            message.setConversationId(existing.getConversationId());
+        }
+        if (message.getSenderId() == null) {
+            message.setSenderId(existing.getSenderId());
+        }
+        if (message.getRecipientId() == null) {
+            message.setRecipientId(existing.getRecipientId());
+        }
+        if (message.getContent() == null || message.getContent().trim().isEmpty()) {
+            message.setContent(existing.getContent());
+        } else {
+            message.setContent(message.getContent().trim());
+        }
+
+        message.setId(messageId);
+        message.setSentAt(existing.getSentAt());
+        message.setRead(existing.isRead());
+        // we set this attiruts here becase in save method we need sentAt Read end Id values but since Update Messsage Request does not have them
+        //i hade to set them here or change the Request inhalt , but i didint wanted to do that , necessery infromations can be setted form here :)
+
+        return messageRepository.save(message);
+    }
+
+    @Override
+    public List<Message> getAllMessagesFromUser(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return messageRepository.getAllMesagesByUserId(userId);
+    }
 }

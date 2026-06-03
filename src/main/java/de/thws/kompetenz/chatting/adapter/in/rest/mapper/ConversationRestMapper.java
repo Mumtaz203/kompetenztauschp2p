@@ -1,6 +1,7 @@
 package de.thws.kompetenz.chatting.adapter.in.rest.mapper;
 
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.ConversationResponse;
+import de.thws.kompetenz.chatting.adapter.in.rest.dto.ShowConversationResponse;
 import de.thws.kompetenz.chatting.domain.Conversation;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -12,6 +13,18 @@ public class ConversationRestMapper {
         }
       ConversationResponse response = new ConversationResponse();
         response.setId(conversation.getId());
+        response.setUser1Id(conversation.getUser1Id());
+        response.setUser2Id(conversation.getUser2Id());
+        response.setCreatedAt(conversation.getCreatedAt());
+        response.setLastMessageAt(conversation.getLastMessageAt());
+        return response;
+    }
+    public ShowConversationResponse toShowConversationResponse(Conversation conversation) {
+        if(conversation == null) {
+            return null;
+        }
+        ShowConversationResponse response = new ShowConversationResponse();
+        response.setConversationId(conversation.getId());
         response.setUser1Id(conversation.getUser1Id());
         response.setUser2Id(conversation.getUser2Id());
         response.setCreatedAt(conversation.getCreatedAt());

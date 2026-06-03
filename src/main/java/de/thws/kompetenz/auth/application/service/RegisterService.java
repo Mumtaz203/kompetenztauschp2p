@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.util.Locale;
+import java.util.Set;
 
 @ApplicationScoped
 public class RegisterService implements RegisterUseCase {
@@ -47,9 +48,8 @@ public class RegisterService implements RegisterUseCase {
 
         User savedUser = userRepositoryPort.save(user);
 
-        String token = tokenProviderPort.generateToken(savedUser.getId(), savedUser.getEmail());
+        String token = tokenProviderPort.generateToken(savedUser.getId(), savedUser.getEmail(), Set.of("USER"));
 
         return new RegisterResult(savedUser, token);
     }
 }
-
