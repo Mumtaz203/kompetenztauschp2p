@@ -3,6 +3,7 @@ package de.thws.kompetenz.user.adapter.in.rest.mapper;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateProfileResponse;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.GetAllUsersResponse;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.GetUserResponse;
+import de.thws.kompetenz.user.adapter.in.rest.dto.user.UserResponse;
 import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -48,5 +49,9 @@ public class UserRestMapper {
             }
         }
         return new GetAllUsersResponse(mappedUsers);
+    }
+    public UserResponse toUserResponse(User user) {
+        if (user == null) return null;
+        return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getOfferedSkills(), user.getWantedSkills(),user.getPassword());
     }
 }

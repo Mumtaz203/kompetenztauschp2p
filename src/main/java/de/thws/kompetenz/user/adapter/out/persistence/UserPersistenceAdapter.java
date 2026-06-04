@@ -92,4 +92,23 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
               .map(ue->userPersistenceMapper.toDomain(ue))
               .toList();
     }
+
+    @Override
+    public User deleteUserById(UUID userId) {
+        if(userId == null) {
+            throw new IllegalArgumentException("UserId cannot be null");
+        }
+
+       UserEntity entity= userPanacheRepository.findUserById(userId)
+               .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        User deletedUser = userPersistenceMapper.toDomain(entity);
+
+        userPanacheRepository.delete(entity);
+        return deletedUser;
+    }
+
+
+
+
 }

@@ -88,4 +88,23 @@ public class MessagePersistenceAdapter implements MessageRepositoryPortI {
         messageEntity.setRead(true);
 
     }
+
+    @Override
+    public boolean deleteMessageById(UUID messageId) {
+        if(messageId==null){
+            throw new IllegalArgumentException("MessageId connot be null");
+        }
+       return messagePanacheRepository.deleteById(messageId);
+    }
+
+    @Override
+    public List<Message> getAllMesagesByUserId(UUID userId) {
+        if (userId==null){
+            throw new IllegalArgumentException("UserId connot be null");
+        }
+        return messagePanacheRepository.getAllMessagesByUserId(userId)
+                .stream().map(messageEntity->messagePersistenceMapper.toDomain(messageEntity)).toList();
+    }
+
+
 }

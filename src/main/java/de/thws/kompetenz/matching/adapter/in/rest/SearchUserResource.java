@@ -3,6 +3,7 @@ package de.thws.kompetenz.matching.adapter.in.rest;
 import de.thws.kompetenz.matching.adapter.in.rest.dto.SearchUserResponse;
 import de.thws.kompetenz.matching.adapter.in.rest.mapper.SearchUserMapper;
 import de.thws.kompetenz.matching.application.port.in.SearchUserUseCase;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -26,6 +27,7 @@ public class SearchUserResource {
 
     @GET
     @Path("/search")
+    @RolesAllowed("USER")
     public Response searchUserBySkill(
             @QueryParam("skill") String skill,
             @QueryParam("skills") String skills) {

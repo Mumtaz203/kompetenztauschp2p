@@ -1,5 +1,6 @@
 package de.thws.kompetenz.chatting.adapter.in.rest.mapper;
 
+import de.thws.kompetenz.chatting.adapter.in.rest.dto.CreateMessageRequest;
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
 import de.thws.kompetenz.chatting.domain.Message;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,5 +22,14 @@ public class MessageRestMapper {
         response.setSentAt(message.getSentAt());
         response.setRead(message.isRead());
         return response;
+    }
+
+    public Message toModel(CreateMessageRequest messageRequest) {
+        Message message= new Message();
+        message.setContent(messageRequest.getContent());
+        message.setConversationId(messageRequest.getConversationId());
+        message.setSenderId(messageRequest.getSenderId());
+        message.setRecipientId(messageRequest.getRecipientId());
+        return message;
     }
 }

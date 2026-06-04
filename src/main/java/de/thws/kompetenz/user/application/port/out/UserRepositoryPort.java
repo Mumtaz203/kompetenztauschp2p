@@ -22,4 +22,10 @@ public interface UserRepositoryPort {
     Optional<User>findUserById(UUID userId);
 
     List<User> findAllUsers();
+
+    User deleteUserById(UUID userId);
+
+
+
+
 }

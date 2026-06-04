@@ -14,4 +14,14 @@ public interface MessageUseCaseI {
     Optional<Message> getMessageById(UUID messageId);
 
     void markMessageAsRead(UUID messageId);
+
+    Message deleteMessage(UUID messageId);
+
+    Message updateMessage(UUID messageId,Message message);
+
+    List<Message>getAllMessagesFromUser(UUID userId);
+
+
+
+
 }
