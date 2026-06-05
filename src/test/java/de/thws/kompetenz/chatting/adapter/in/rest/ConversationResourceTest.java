@@ -2,6 +2,7 @@ package de.thws.kompetenz.chatting.adapter.in.rest;
 
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.ConversationResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
+import de.thws.kompetenz.chatting.adapter.in.rest.dto.ShowConversationResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.ConversationRestMapper;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.MessageRestMapper;
 import de.thws.kompetenz.chatting.application.port.in.ConversationUseCaseI;
@@ -13,6 +14,7 @@ import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = "USER")
 class ConversationResourceTest {
 
     @InjectMock ConversationUseCaseI conversationUseCase;
@@ -232,12 +235,19 @@ class ConversationResourceTest {
 
         User u1 = new User(user1, "samet", "samet@mail.com", "x");
         User u2 = new User(user2, "mumtaz", "mumtaz@mail.com", "x");
+        ShowConversationResponse showResponse = new ShowConversationResponse();
+        showResponse.setConversationId(conversationId);
+        showResponse.setUser1Id(user1);
+        showResponse.setUser2Id(user2);
+        showResponse.setCreatedAt(conversation.getCreatedAt());
+        showResponse.setLastMessageAt(conversation.getLastMessageAt());
 
         when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.of(conversation));
         when(messageUseCase.getMessagesByConversationId(conversationId)).thenReturn(List.of(message));
         when(messageRestMapper.toResponse(message)).thenReturn(messageResponse);
         when(userRepositoryPort.findUserById(user1)).thenReturn(Optional.of(u1));
         when(userRepositoryPort.findUserById(user2)).thenReturn(Optional.of(u2));
+        when(conversationRestMapper.toShowConversationResponse(conversation)).thenReturn(showResponse);
 
         given()
                 .when().get("/conversations/{id}/details", conversationId)

@@ -14,4 +14,9 @@ public interface MessageRepositoryPortI {
     List<Message> findByConversationId(UUID conversationId);
 
     void markAsRead(UUID messageId);
+
+    boolean deleteMessageById(UUID messageId);
+
+    List<Message> getAllMesagesByUserId(UUID userId);
+
 }

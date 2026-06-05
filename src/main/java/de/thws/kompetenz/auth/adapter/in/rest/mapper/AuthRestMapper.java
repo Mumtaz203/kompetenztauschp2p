@@ -43,8 +43,8 @@ public class AuthRestMapper {
         );
     }
 
-    public LoginResponse toLoginResponse(String token){
-        return new LoginResponse(token, TOKEN_TYPE_BEARER);
+    public LoginResponse toLoginResponse(String token,String role){//added role(admin or user)
+        return new LoginResponse(token, TOKEN_TYPE_BEARER,role);
     }
 
     public CurrentUserReponse toCurrentUserResponse(User user){

@@ -7,6 +7,7 @@ import de.thws.kompetenz.chatting.domain.Message;
 import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = "USER")
 class MessageResourceTest {
 
     @InjectMock MessageUseCaseI messageUseCase;

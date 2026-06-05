@@ -5,6 +5,7 @@ import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = "USER")
 class SearchUserResourceTest {
 
     @InjectMock

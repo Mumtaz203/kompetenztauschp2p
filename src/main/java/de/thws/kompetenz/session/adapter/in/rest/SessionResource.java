@@ -4,6 +4,7 @@ import de.thws.kompetenz.session.adapter.in.rest.dto.CreateSessionRequest;
 import de.thws.kompetenz.session.adapter.in.rest.mapper.SessionRestMapper;
 import de.thws.kompetenz.session.application.port.in.ICreateSessionUseCase;
 import de.thws.kompetenz.session.application.port.in.IGetSessionUseCase;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -30,6 +31,7 @@ public class SessionResource {
     }
 
     @POST
+    @RolesAllowed({"USER", "ADMIN"})
     public Response createSession(CreateSessionRequest request) {
         var session = createSessionUseCase.createSession(
                 request.requesterUserId(),
@@ -43,6 +45,7 @@ public class SessionResource {
 
     @GET
     @Path("/{sessionId}")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getSession(@PathParam("sessionId") UUID sessionId) {
         return getSessionUseCase.findById(sessionId)
                 .map(session -> Response.ok(mapper.toResponse(session)).build())
@@ -51,6 +54,7 @@ public class SessionResource {
 
     @GET
     @Path("/{sessionId}/participants/{userId}")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response isParticipant(
             @PathParam("sessionId") UUID sessionId,
             @PathParam("userId") UUID userId

@@ -10,6 +10,7 @@ import de.thws.kompetenz.chatting.application.port.in.ConversationUseCaseI;
 import de.thws.kompetenz.chatting.application.port.in.MessageUseCaseI;
 import de.thws.kompetenz.chatting.domain.Conversation;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -44,6 +45,7 @@ public class ConversationResource {
 
 
     @POST
+    @RolesAllowed("USER")
     public Response createConversation(@Valid CreateConversationRequest request) {
         Conversation created = conversationUseCase.
                 createConversation(request.getCurrentUserId(), request.getOtherUserId());
@@ -54,6 +56,7 @@ public class ConversationResource {
 
     @GET
     @Path("/{conversationId}")
+    @RolesAllowed({"USER","ADMIN"})
     public Response getConversationById(@PathParam("conversationId") UUID conversationId) {
         return conversationUseCase.getConversationById(conversationId)
                 .map(conversationRestMapper::toResponse)
@@ -64,6 +67,7 @@ public class ConversationResource {
 
     @GET
     @Path("/user/{userId}")
+    @RolesAllowed({"USER","ADMIN"})
     public Response getConversationsOfUser(@PathParam("userId") UUID userId) {
         List<ConversationResponse> response = conversationUseCase.getConversationsOfUser(userId).stream()
                 .map(conversationRestMapper::toResponse)
@@ -73,6 +77,7 @@ public class ConversationResource {
 
     @GET
     @Path("/between")
+    @RolesAllowed({"USER","ADMIN"})
     public Response findBetweenUsers(@QueryParam("user1Id") UUID user1Id, @QueryParam("user2Id") UUID user2Id) {
         return conversationUseCase.findBetweenUsers(user1Id, user2Id)
                 .map(conversationRestMapper::toResponse)
@@ -83,6 +88,7 @@ public class ConversationResource {
 
     @DELETE
     @Path("/{conversationId}")
+    @RolesAllowed({"USER","ADMIN"})
     public Response deleteConversation(@PathParam("conversationId") UUID conversationId) {
         Conversation deleted = conversationUseCase.deleteConversation(conversationId);
         ConversationResponse response = conversationRestMapper.toResponse(deleted);
@@ -92,6 +98,7 @@ public class ConversationResource {
 
     @GET
     @Path("/{conversationId}/details")
+    @RolesAllowed({"USER","ADMIN"})
     public Response showConversationWithId(@PathParam("conversationId") UUID conversationId) {
         Conversation conversation = conversationUseCase.getConversationById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation with id " + conversationId + " not found"));
@@ -108,15 +115,13 @@ public class ConversationResource {
                 .orElseThrow(() -> new NotFoundException("User not found: " + conversation.getUser2Id()))
                 .getUsername();
 
-        ShowConversationResponse response = new ShowConversationResponse();
-        response.setConversationId(conversation.getId());
-        response.setUser1Id(conversation.getUser1Id());
-        response.setUser2Id(conversation.getUser2Id());
+        ShowConversationResponse response = conversationRestMapper.toShowConversationResponse(conversation);
+
         response.setUser1Name(user1Name);
         response.setUser2Name(user2Name);
-        response.setCreatedAt(conversation.getCreatedAt());
-        response.setLastMessageAt(conversation.getLastMessageAt());
         response.setMessages(messages);
+
+        //this 3 cant be set by mapper i mean we dont need to set them by mapper
 
         return Response.ok(response).build();
     }
