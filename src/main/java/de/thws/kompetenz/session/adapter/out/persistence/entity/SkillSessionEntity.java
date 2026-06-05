@@ -14,6 +14,9 @@ public class SkillSessionEntity {
     @Column(name = "id", nullable = false)
     public UUID id;
 
+    @Column(name = "matching_request_id", nullable = false, unique = true, columnDefinition = "UUID")
+    public UUID matchingRequestId;
+
     @Column(name = "requester_user_id", nullable = false)
     public UUID requesterUserId;
 

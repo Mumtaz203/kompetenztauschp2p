@@ -3,16 +3,18 @@ package de.thws.kompetenz.session.application.service;
 
 import de.thws.kompetenz.session.application.port.in.ICreateSessionUseCase;
 import de.thws.kompetenz.session.application.port.in.IGetSessionUseCase;
+import de.thws.kompetenz.session.application.port.in.IOpenRatingWindowUseCase;
 import de.thws.kompetenz.session.application.port.out.ISessionRepositoryPort;
 import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase {
+public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase, IOpenRatingWindowUseCase {
 
     private final ISessionRepositoryPort sessionRepositoryPort;
 
@@ -22,7 +24,11 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
 
     @Override
     @Transactional
-    public SkillSession createSession(UUID requesterUserId, UUID receiverUserId) {
+    public SkillSession createSession(UUID matchingRequestId, UUID requesterUserId, UUID receiverUserId) {
+        if (matchingRequestId == null) {
+            throw new IllegalArgumentException("Matching request id must not be null");
+        }
+
         if (requesterUserId == null || receiverUserId == null) {
             throw new IllegalArgumentException("User ids must not be null");
         }
@@ -31,11 +37,12 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
             throw new IllegalArgumentException("A user cannot create a session with himself");
         }
 
-        if (sessionRepositoryPort.existsActiveSessionBetween(requesterUserId, receiverUserId)) {
-            throw new IllegalStateException("There is already an active session between these users");
+        if (sessionRepositoryPort.existsByMatchingRequestId(matchingRequestId)) {
+            throw new IllegalStateException("A session already exists for this matching request");
         }
 
-        SkillSession session = SkillSession.create(requesterUserId, receiverUserId);
+        SkillSession session = SkillSession.create(matchingRequestId, requesterUserId, receiverUserId);
+
         return sessionRepositoryPort.save(session);
     }
 
@@ -56,5 +63,20 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
         return sessionRepositoryPort.findById(sessionId)
                 .map(session -> session.hasParticipants(firstUserId, secondUserId))
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional
+    public SkillSession openRatingWindow(UUID sessionId, LocalDateTime ratingWindowEndsAt) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session id must not be null");
+        }
+
+        SkillSession session = sessionRepositoryPort.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        session.openRatingWindow(LocalDateTime.now(), ratingWindowEndsAt);
+
+        return sessionRepositoryPort.save(session);
     }
 }

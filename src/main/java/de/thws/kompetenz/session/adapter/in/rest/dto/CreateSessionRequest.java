@@ -4,7 +4,8 @@ import java.util.UUID;
 
 
 public record CreateSessionRequest (
-    UUID requesterUserId,
-    UUID receiverUserId )
+        UUID matchingRequestId,
+        UUID requesterUserId,
+        UUID receiverUserId )
 {
 }

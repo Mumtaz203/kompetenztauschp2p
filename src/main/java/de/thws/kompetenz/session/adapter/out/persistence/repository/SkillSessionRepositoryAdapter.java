@@ -1,5 +1,6 @@
 package de.thws.kompetenz.session.adapter.out.persistence.repository;
 
+import de.thws.kompetenz.session.adapter.out.persistence.entity.SkillSessionEntity;
 import de.thws.kompetenz.session.adapter.out.persistence.mapper.SkillSessionPersistenceMapper;
 import de.thws.kompetenz.session.application.port.out.ISessionRepositoryPort;
 import de.thws.kompetenz.session.domain.SkillSession;
@@ -24,9 +25,25 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
 
     @Override
     public SkillSession save(SkillSession session) {
-        var entity = mapper.toEntity(session);
-        repository.persist(entity);
-        return mapper.toDomain(entity);
+        if (session == null) {
+            throw new IllegalArgumentException("Session must not be null");
+        }
+
+        if (session.getId() == null) {
+            SkillSessionEntity entity = mapper.toEntity(session);
+            repository.persist(entity);
+            return mapper.toDomain(entity);
+        }
+
+        SkillSessionEntity existingEntity = repository.findByIdOptional(session.getId())
+                .orElseThrow(() -> new IllegalArgumentException("No existing session found for this id"));
+
+        existingEntity.status = session.getStatus();
+        existingEntity.completedAt = session.getCompletedAt();
+        existingEntity.ratingWindowOpenedAt = session.getRatingWindowOpenedAt();
+        existingEntity.ratingWindowEndsAt = session.getRatingWindowEndsAt();
+
+        return mapper.toDomain(existingEntity);
     }
 
     @Override
@@ -38,5 +55,10 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
     @Override
     public boolean existsActiveSessionBetween(UUID requesterUserId, UUID receiverUserId) {
         return repository.existsActiveSessionBetween(requesterUserId, receiverUserId);
+    }
+
+    @Override
+    public boolean existsByMatchingRequestId(UUID matchingRequestId) {
+        return repository.existsByMatchingRequestId(matchingRequestId);
     }
 }

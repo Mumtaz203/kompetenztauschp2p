@@ -31,9 +31,10 @@ public class SessionResource {
     }
 
     @POST
-    @RolesAllowed({"USER", "ADMIN"})
+    @RolesAllowed({"USER", "ADMIN"}) //since the session is now created at matching_request maybe make this endpoint admin only?
     public Response createSession(CreateSessionRequest request) {
         var session = createSessionUseCase.createSession(
+                request.matchingRequestId(),
                 request.requesterUserId(),
                 request.receiverUserId()
         );

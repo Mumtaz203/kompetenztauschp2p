@@ -9,9 +9,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class SkillSessionPersistenceMapper {
 
     public SkillSessionEntity toEntity(SkillSession session) {
+        if (session == null) {
+            return null;
+        }
+
         SkillSessionEntity entity = new SkillSessionEntity();
 
         entity.id = session.getId();
+        entity.matchingRequestId = session.getMatchingRequestId();
         entity.requesterUserId = session.getRequesterUserId();
         entity.receiverUserId = session.getReceiverUserId();
         entity.status = session.getStatus();
@@ -31,6 +36,7 @@ public class SkillSessionPersistenceMapper {
 
         return new SkillSession(
                 entity.id,
+                entity.matchingRequestId,
                 entity.requesterUserId,
                 entity.receiverUserId,
                 entity.status,

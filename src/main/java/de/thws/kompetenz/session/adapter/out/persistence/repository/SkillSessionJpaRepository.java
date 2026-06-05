@@ -24,4 +24,8 @@ public class SkillSessionJpaRepository implements PanacheRepositoryBase<SkillSes
                 secondUserId
         ) > 0;
     }
+
+    public boolean existsByMatchingRequestId(UUID matchingRequestId) {
+        return count("matchingRequestId = ?1", matchingRequestId) > 0;
+    }
 }

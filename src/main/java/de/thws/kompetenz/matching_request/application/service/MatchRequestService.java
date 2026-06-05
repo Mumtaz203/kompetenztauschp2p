@@ -5,7 +5,9 @@ import de.thws.kompetenz.matching_request.application.port.in.MatchRequestUseCas
 import de.thws.kompetenz.matching_request.application.port.out.MatchRequestRepositoryPortI;
 import de.thws.kompetenz.matching_request.domain.MatchRequestModel;
 import de.thws.kompetenz.matching_request.domain.MatchRequestStatus;
+import de.thws.kompetenz.session.application.port.in.ICreateSessionUseCase;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,8 +15,11 @@ import java.util.UUID;
 @ApplicationScoped
 public class MatchRequestService implements MatchRequestUseCaseI {
     private final MatchRequestRepositoryPortI adapter;
-    public MatchRequestService( MatchRequestRepositoryPortI matchRequestRepositoryPort) {
+    private final ICreateSessionUseCase createSessionUseCase;
+
+    public MatchRequestService( MatchRequestRepositoryPortI matchRequestRepositoryPort, ICreateSessionUseCase createSessionUseCase) {
         this.adapter= matchRequestRepositoryPort;
+        this.createSessionUseCase = createSessionUseCase;
 
     }
 
@@ -41,21 +46,34 @@ public class MatchRequestService implements MatchRequestUseCaseI {
     }
 
     @Override
+    @Transactional
     public MatchRequestModel acceptRequest(UUID requestId, UUID actingUserId) {
         if (requestId == null || actingUserId == null) {
             throw new IllegalArgumentException("requestId and actingUserId cannot be null");
         }
+
         MatchRequestModel model = adapter.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Match request not found: " + requestId));
 
         if (!actingUserId.equals(model.getReceiverId())) {
             throw new IllegalArgumentException("Only the receiver of the match request can accept it");
         }
+
         if (!model.getStatus().equals(MatchRequestStatus.PENDING)) {
-            throw new IllegalStateException("only pending match request can be accepted");
+            throw new IllegalStateException("Only pending match requests can be accepted");
         }
+
         model.setStatus(MatchRequestStatus.ACCEPTED);
-        return adapter.save(model);
+
+        MatchRequestModel accepted = adapter.save(model);
+
+        createSessionUseCase.createSession(
+                accepted.getId(),
+                accepted.getSenderId(),
+                accepted.getReceiverId()
+        );
+
+        return accepted;
     }
 
     @Override

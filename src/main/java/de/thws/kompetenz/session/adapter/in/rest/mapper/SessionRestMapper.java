@@ -10,6 +10,7 @@ public class SessionRestMapper {
     public SessionResponse toResponse(SkillSession session) {
         return new SessionResponse(
                 session.getId(),
+                session.getMatchingRequestId(),
                 session.getRequesterUserId(),
                 session.getReceiverUserId(),
                 session.getStatus(),
