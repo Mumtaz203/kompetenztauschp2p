@@ -2,6 +2,7 @@ package de.thws.kompetenz.user.adapter.in.rest;
 
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.when;
@@ -19,6 +21,9 @@ class UserResourceTest {
 
     @InjectMock
     UserRepositoryPort userRepositoryPort;
+
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
 
     @Test
     void getAllUsers_returns200_withUsersAndWithoutPasswordField() {
@@ -64,11 +69,11 @@ class UserResourceTest {
         UUID id = UUID.randomUUID();
         when(userRepositoryPort.findUserById(id)).thenReturn(Optional.empty());
 
-        given()
+        assertStatus(404, () -> given()
                 .when()
                 .get("/users/getUser/{id}", id)
                         .then()
-                                .statusCode(404);
+                                .statusCode(404));
     }
 
     private static User user(String username, String... offeredSkills) {

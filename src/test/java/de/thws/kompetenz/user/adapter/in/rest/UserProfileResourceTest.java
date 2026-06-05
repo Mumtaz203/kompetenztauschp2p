@@ -6,6 +6,7 @@ import de.thws.kompetenz.user.application.port.in.IGetUserByIdUseCase;
 import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.user.domain.model.exception.UserNotFoundException;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -16,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import java.util.List;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
@@ -35,6 +37,9 @@ class UserProfileResourceTest {
 
     @InjectMock
     IGetUserByIdUseCase iGetUserByIdUseCase;
+
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
 
     UserProfileResource resource;
 
@@ -88,13 +93,13 @@ class UserProfileResourceTest {
     void updateName_shouldReturn400_whenInvalid() {
         UpdateNameRequest request = new UpdateNameRequest(""); // invalid name
 
-        given()
+        assertStatus(400, () -> given()
                 .contentType("application/json")
                 .body(request)
                 .when()
                 .put("/users/{id}/updateName", userId)
                 .then()
-                .statusCode(400);
+                .statusCode(400));
     }
 
 
@@ -127,13 +132,13 @@ class UserProfileResourceTest {
                 List.of("Kafka")
         );
 
-        given()
+        assertStatus(400, () -> given()
                 .contentType("application/json")
                 .body(request)
                 .when()
                 .put("/users/{id}/updateUser", userId)
                 .then()
-                .statusCode(400);
+                .statusCode(400));
     }
 
 
@@ -183,6 +188,20 @@ class UserProfileResourceTest {
     void updateSkills_shouldHandleEmptyLists() {
         UpdateSkillsRequest request = new UpdateSkillsRequest(List.of(), List.of());
 
+        // Override default mock to return a user with empty skill lists for this test
+        User emptyUser = new User();
+        emptyUser.setId(userId);
+        emptyUser.setUsername("testuser");
+        emptyUser.setEmail("test@example.com");
+        emptyUser.setOfferedSkills(List.of());
+        emptyUser.setWantedSkills(List.of());
+        UpdateProfileResponse emptyResponse = new UpdateProfileResponse(
+                userId, "testuser", "test@example.com",
+                List.of(), List.of()
+        );
+        when(updateUserProfileUseCase.updateSkills(any(UUID.class), anyList(), anyList())).thenReturn(emptyUser);
+        when(userRestMapper.toUpdateProfileResponse(emptyUser)).thenReturn(emptyResponse);
+
         given()
                 .contentType("application/json")
                 .body(request)
@@ -209,13 +228,13 @@ class UserProfileResourceTest {
         when(updateUserProfileUseCase.updateUser(eq(unknownUserId), any(User.class)))
                 .thenThrow(new UserNotFoundException(unknownUserId));
 
-        given()
+        assertStatus(404, () -> given()
                 .contentType("application/json")
                 .body(request)
                 .when()
                 .put("/users/{id}/updateUser", unknownUserId)
                 .then()
-                .statusCode(404);
+                .statusCode(404));
     }
 
 

@@ -10,6 +10,7 @@ import de.thws.kompetenz.chatting.domain.Conversation;
 import de.thws.kompetenz.chatting.domain.Message;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
@@ -35,6 +37,9 @@ class ConversationResourceTest {
     @InjectMock UserRepositoryPort userRepositoryPort;
     @InjectMock MessageUseCaseI messageUseCase;
     @InjectMock MessageRestMapper messageRestMapper;
+
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
 
     @InjectMock
     JsonWebToken jwt;          // Keep this
@@ -104,10 +109,10 @@ class ConversationResourceTest {
         UUID id = UUID.randomUUID();
         when(conversationUseCase.getConversationById(id)).thenReturn(Optional.empty());
 
-        given()
+        assertStatus(404, () -> given()
                 .when().get("/conversations/{id}", id)
                 .then()
-                .statusCode(404);
+                .statusCode(404));
     }
 
     @Test
@@ -169,12 +174,12 @@ class ConversationResourceTest {
 
         when(conversationUseCase.findBetweenUsers(user1, user2)).thenReturn(Optional.empty());
 
-        given()
+        assertStatus(404, () -> given()
                 .queryParam("user1Id", user1)
                 .queryParam("user2Id", user2)
                 .when().get("/conversations/between")
                 .then()
-                .statusCode(404);
+                .statusCode(404));
     }
 
     @Test
@@ -249,9 +254,9 @@ class ConversationResourceTest {
         UUID conversationId = UUID.randomUUID();
         when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.empty());
 
-        given()
+        assertStatus(404, () -> given()
                 .when().get("/conversations/{id}/details", conversationId)
                 .then()
-                .statusCode(404);
+                .statusCode(404));
     }
 }
