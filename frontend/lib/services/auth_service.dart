@@ -8,6 +8,7 @@ class AuthService {
   static const String baseUrl = 'http://10.0.2.2:8081';
   static const String _jwtTokenKey = 'jwt_token';
   static const String _userIdKey = 'my_user_id';
+  static const String _userRoleKey = 'my_user_role';
 
   Future<AuthResponseModel> login({
     required String email,
@@ -27,6 +28,7 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
 
         await prefs.setString(_jwtTokenKey, authResponse.token);
+        await prefs.setString(_userRoleKey, authResponse.role);
 
         Map<String, dynamic> decodedToken = JwtDecoder.decode(
           authResponse.token,
@@ -34,9 +36,9 @@ class AuthService {
 
         String myId =
             decodedToken['sub']?.toString() ??
-            decodedToken['id']?.toString() ??
-            decodedToken['upn']?.toString() ??
-            '';
+                decodedToken['id']?.toString() ??
+                decodedToken['upn']?.toString() ??
+                '';
 
         await prefs.setString(_userIdKey, myId);
 
@@ -57,6 +59,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_jwtTokenKey);
     await prefs.remove(_userIdKey);
+    await prefs.remove(_userRoleKey);
   }
 
   static Future<String?> getStoredToken() async {
@@ -67,6 +70,11 @@ class AuthService {
   static Future<String?> getStoredUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userIdKey);
+  }
+
+  static Future<String?> getStoredUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userRoleKey);
   }
 
   Future<void> register({
