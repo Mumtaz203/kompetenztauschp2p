@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/matching_service.dart';
+import '../services/auth_service.dart';
 import '../core/app_colors.dart';
 import 'chat_screen.dart';
 
@@ -64,14 +65,38 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             );
           }
 
+          return FutureBuilder<String?>(
+            future: AuthService.getStoredUserId(),
+            builder: (context, userIdSnapshot) {
+              if (userIdSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primaryBlue),
+                );
+              }
 
-          final users = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return _buildResultCard(user);
+              final myId = userIdSnapshot.data;
+
+              final users = snapshot.data!
+                  .where((user) => user.id != myId)
+                  .toList();
+
+              if (users.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No users found with that skill.',
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  return _buildResultCard(user);
+                },
+              );
             },
           );
         },
