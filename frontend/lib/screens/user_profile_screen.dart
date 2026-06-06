@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/app_colors.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
@@ -91,6 +92,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final routeArgs = ModalRoute.of(context)?.settings.arguments;
     final args = routeArgs is Map ? routeArgs : const {};
     final otherUserId = args['userId']?.toString() ?? '';
@@ -98,105 +101,68 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Widget body;
 
     if (isLoading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryBlue),
+      );
     } else if (errorMessage != null && user == null) {
-      body = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: loadUserProfile,
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
+      body = _ProfileStateMessage(
+        isDark: isDark,
+        icon: Icons.error_outline_rounded,
+        title: 'Profile could not be loaded',
+        message: errorMessage!,
+        buttonText: 'Try again',
+        onPressed: loadUserProfile,
       );
     } else {
       body = ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         children: [
-          const CircleAvatar(radius: 42, child: Icon(Icons.person, size: 40)),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              user!.username,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Center(
-            child: Text(
-              user!.email.isEmpty ? 'No email available' : user!.email,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Skills I can teach',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: user!.offeredSkills.isEmpty
-                ? const [Chip(label: Text('No skills added'))]
-                : user!.offeredSkills
-                      .map((skill) => Chip(label: Text(skill)))
-                      .toList(),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Skills I want to learn',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: user!.wantedSkills.isEmpty
-                ? const [Chip(label: Text('No skills added'))]
-                : user!.wantedSkills
-                      .map((skill) => Chip(label: Text(skill)))
-                      .toList(),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                AuthService.getStoredUserId().then((currentUserId) {
-                  if (!mounted) return;
-                  if (currentUserId == null ||
-                      currentUserId.isEmpty ||
-                      otherUserId.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Chat cannot be opened without a real user id.',
-                        ),
+          _UserHeader(
+            user: user!,
+            isDark: isDark,
+            onMessagePressed: () {
+              AuthService.getStoredUserId().then((currentUserId) {
+                if (!mounted) return;
+                if (currentUserId == null ||
+                    currentUserId.isEmpty ||
+                    otherUserId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Chat cannot be opened without a real user id.',
                       ),
-                    );
-                    return;
-                  }
-
-                  Navigator.pushNamed(
-                    context,
-                    '/chat',
-                    arguments: {
-                      'currentUserId': currentUserId,
-                      'otherUserId': otherUserId,
-                      'otherUserName': user!.username,
-                    },
+                    ),
                   );
-                });
-              },
-              child: const Text('Send Message'),
-            ),
+                  return;
+                }
+
+                Navigator.pushNamed(
+                  context,
+                  '/chat',
+                  arguments: {
+                    'currentUserId': currentUserId,
+                    'otherUserId': otherUserId,
+                    'otherUserName': user!.username,
+                  },
+                );
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+          _SkillSection(
+            title: 'Skills I can teach',
+            icon: Icons.school_outlined,
+            skills: user!.offeredSkills,
+            color: AppColors.primaryBlue,
+            isDark: isDark,
+          ),
+          const SizedBox(height: 18),
+          _SkillSection(
+            title: 'Skills I want to learn',
+            icon: Icons.auto_awesome_outlined,
+            skills: user!.wantedSkills,
+            color: AppColors.primaryGreen,
+            isDark: isDark,
           ),
         ],
       );
@@ -209,14 +175,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _goHome();
       },
       child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text('User Profile'),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          elevation: 0,
+          centerTitle: true,
+          iconTheme: IconThemeData(
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+          title: Text(
+            'User Profile',
+            style: TextStyle(
+              color: isDark ? AppColors.textColor : Colors.black87,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
+            ),
+          ),
           leading: IconButton(
             onPressed: _goHome,
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
         ),
-        body: body,
+        body: SafeArea(child: body),
       ),
     );
   }
@@ -226,5 +207,281 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return value.map((item) => item.toString()).toList();
     }
     return [];
+  }
+}
+
+class _UserHeader extends StatelessWidget {
+  final UserModel user;
+  final bool isDark;
+  final VoidCallback onMessagePressed;
+
+  const _UserHeader({
+    required this.user,
+    required this.isDark,
+    required this.onMessagePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final emailText = user.email.isEmpty ? 'No email available' : user.email;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E293B).withOpacity(0.85)
+            : Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black12,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 44,
+            backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+            child: Text(
+              user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.username,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? AppColors.textColor : Colors.black87,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            emailText,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark
+                  ? AppColors.subtitleDarkColor
+                  : AppColors.subtitleBrightColor,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: onMessagePressed,
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue.withOpacity(0.12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                'Send Message',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkillSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<String> skills;
+  final Color color;
+  final bool isDark;
+
+  const _SkillSection({
+    required this.title,
+    required this.icon,
+    required this.skills,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displaySkills = skills.isEmpty ? ['No skills added'] : skills;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E293B).withOpacity(0.72)
+            : Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black12,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? AppColors.textColor : Colors.black87,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: displaySkills
+                .map(
+                  (skill) => _SkillChip(
+                label: skill,
+                color: skills.isEmpty ? AppColors.subtitleBrightColor : color,
+                isDark: isDark,
+              ),
+            )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkillChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool isDark;
+
+  const _SkillChip({
+    required this.label,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDark ? 0.16 : 0.12),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileStateMessage extends StatelessWidget {
+  final bool isDark;
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? buttonText;
+  final VoidCallback? onPressed;
+
+  const _ProfileStateMessage({
+    required this.isDark,
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.buttonText,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1E293B).withOpacity(0.85)
+                : Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black12,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.redAccent, size: 42),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? AppColors.textColor : Colors.black87,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.subtitleDarkColor
+                      : AppColors.subtitleBrightColor,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              if (buttonText != null && onPressed != null) ...[
+                const SizedBox(height: 18),
+                TextButton(
+                  onPressed: onPressed,
+                  child: Text(
+                    buttonText!,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

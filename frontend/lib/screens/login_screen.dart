@@ -40,7 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
         const SnackBar(content: Text('Login successful!, welcome back.')),
       );
 
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      if (authResponse.role == 'ADMIN') {
+        Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
 
     } catch (e) {
       if (!mounted) return;
