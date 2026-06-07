@@ -28,7 +28,7 @@ public class SkillEmbeddingBackfillService {
         }
 
         int usersChecked = 0;
-        int usersWithOfferedSkills = 0;
+        int usersWithSkills = 0;
         int embeddingsEnsured = 0;
 
         for (User user : users) {
@@ -37,17 +37,27 @@ public class SkillEmbeddingBackfillService {
             }
 
             usersChecked++;
-            if (user.getOfferedSkills() == null || user.getOfferedSkills().isEmpty()) {
+            boolean hasOfferedSkills = user.getOfferedSkills() != null && !user.getOfferedSkills().isEmpty();
+            boolean hasWantedSkills = user.getWantedSkills() != null && !user.getWantedSkills().isEmpty();
+            if (!hasOfferedSkills && !hasWantedSkills) {
                 continue;
             }
 
-            usersWithOfferedSkills++;
-            List<SkillEmbedding> ensured = skillEmbeddingService.ensureOfferedSkillEmbeddings(user);
-            if (ensured != null) {
-                embeddingsEnsured += ensured.size();
+            usersWithSkills++;
+            if (hasOfferedSkills) {
+                List<SkillEmbedding> offeredEnsured = skillEmbeddingService.ensureOfferedSkillEmbeddings(user);
+                if (offeredEnsured != null) {
+                    embeddingsEnsured += offeredEnsured.size();
+                }
+            }
+            if (hasWantedSkills) {
+                List<SkillEmbedding> wantedEnsured = skillEmbeddingService.ensureWantedSkillEmbeddings(user);
+                if (wantedEnsured != null) {
+                    embeddingsEnsured += wantedEnsured.size();
+                }
             }
         }
 
-        return new BackfillResult(usersChecked, usersWithOfferedSkills, embeddingsEnsured);
+        return new BackfillResult(usersChecked, usersWithSkills, embeddingsEnsured);
     }
 }

@@ -6,6 +6,8 @@ import de.thws.kompetenz.matching.domain.model.SkillEmbedding;
 import de.thws.kompetenz.matching.domain.model.SkillType;
 import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,28 +22,50 @@ public class SkillEmbeddingService {
 
     private final EmbeddingClientPort embeddingClientPort;
     private final SkillEmbeddingRepositoryPort skillEmbeddingRepositoryPort;
+    private final boolean embeddingEnabled;
+    private final String apiKey;
 
+    @Inject
     public SkillEmbeddingService(
             EmbeddingClientPort embeddingClientPort,
-            SkillEmbeddingRepositoryPort skillEmbeddingRepositoryPort
+            SkillEmbeddingRepositoryPort skillEmbeddingRepositoryPort,
+            @ConfigProperty(name = "embedding.enabled", defaultValue = "false") boolean embeddingEnabled,
+            @ConfigProperty(name = "gemini.api.key") Optional<String> apiKey
     ) {
         this.embeddingClientPort = embeddingClientPort;
         this.skillEmbeddingRepositoryPort = skillEmbeddingRepositoryPort;
+        this.embeddingEnabled = embeddingEnabled;
+        this.apiKey = apiKey.map(String::trim).orElse("");
+    }
+
+    SkillEmbeddingService(
+            EmbeddingClientPort embeddingClientPort,
+            SkillEmbeddingRepositoryPort skillEmbeddingRepositoryPort
+    ) {
+        this(embeddingClientPort, skillEmbeddingRepositoryPort, true, Optional.of("test-key"));
     }
 
     public List<SkillEmbedding> ensureOfferedSkillEmbeddings(User user) {
+        return ensureSkillEmbeddings(user, user != null ? user.getOfferedSkills() : null, SkillType.OFFERED);
+    }
+
+    public List<SkillEmbedding> ensureWantedSkillEmbeddings(User user) {
+        return ensureSkillEmbeddings(user, user != null ? user.getWantedSkills() : null, SkillType.WANTED);
+    }
+
+    private List<SkillEmbedding> ensureSkillEmbeddings(User user, List<String> skills, SkillType skillType) {
         if (user == null || user.getId() == null) {
             return List.of();
         }
 
-        List<String> normalizedSkills = normalizeSkillTexts(user.getOfferedSkills());
+        List<String> normalizedSkills = normalizeSkillTexts(skills);
         if (normalizedSkills.isEmpty()) {
             return List.of();
         }
 
         List<SkillEmbedding> skillEmbeddings = new ArrayList<>();
         for (String skillText : normalizedSkills) {
-            SkillEmbedding skillEmbedding = ensureSkillEmbedding(user.getId(), skillText, SkillType.OFFERED);
+            SkillEmbedding skillEmbedding = ensureSkillEmbedding(user.getId(), skillText, skillType);
             if (skillEmbedding != null) {
                 skillEmbeddings.add(skillEmbedding);
             }
@@ -65,7 +89,20 @@ public class SkillEmbeddingService {
             return existing.get();
         }
 
-        List<Double> embedding = embeddingClientPort.createEmbedding(normalizedSkillText);
+        if (!isEmbeddingApiAvailable()) {
+            return null;
+        }
+
+        List<Double> embedding;
+        try {
+            embedding = embeddingClientPort.createEmbedding(normalizedSkillText);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        if (embedding == null || embedding.isEmpty()) {
+            return null;
+        }
+
         SkillEmbedding skillEmbedding = new SkillEmbedding();
         skillEmbedding.setUserId(userId);
         skillEmbedding.setSkillText(normalizedSkillText);
@@ -73,6 +110,10 @@ public class SkillEmbeddingService {
         skillEmbedding.setEmbedding(embedding);
 
         return skillEmbeddingRepositoryPort.save(skillEmbedding);
+    }
+
+    private boolean isEmbeddingApiAvailable() {
+        return embeddingEnabled && apiKey != null && !apiKey.isBlank();
     }
 
     private List<String> normalizeSkillTexts(List<String> offeredSkills) {

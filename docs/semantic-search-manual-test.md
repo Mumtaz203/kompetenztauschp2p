@@ -7,13 +7,16 @@ This guide explains how to manually test the Gemini embedding and hybrid semanti
 - PostgreSQL is running and the backend can connect to it.
 - The backend starts successfully.
 - A real Gemini API key is available.
-- The API key is provided through an environment variable:
+- Embedding API usage is explicitly enabled only when needed.
 
-```bash
-GEMINI_API_KEY=your_real_key_here
+PowerShell example:
+
+```powershell
+$env:EMBEDDING_ENABLED="true"
+$env:GEMINI_API_KEY="your_real_key_here"
 ```
 
-Do not commit real API keys.
+Do not put real API keys in `application.properties`, `docker-compose.yml`, docs, or commits.
 
 ## Required Local Config
 
@@ -28,6 +31,7 @@ This property must stay `false` by default. Only enable it locally or in control
 The production/default setting is:
 
 ```properties
+embedding.enabled=false
 embedding.backfill.enabled=false
 ```
 
@@ -37,6 +41,12 @@ Start the Quarkus backend:
 
 ```bash
 mvn quarkus:dev
+```
+
+On Windows PowerShell, quote `-D` properties if you enable backfill from the command line:
+
+```powershell
+mvn quarkus:dev "-Dembedding.enabled=true" "-Dembedding.backfill.enabled=true"
 ```
 
 By default, the app should be available at:
@@ -118,18 +128,35 @@ Avoid printing full embedding vectors unless you specifically need to debug vect
 
 ## Test Semantic Search
 
+The search endpoint requires a user token. Log in first:
+
+```powershell
+$login = Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:8080/auth/login" `
+  -ContentType "application/json" `
+  -Body '{"email":"backend@example.com","password":"password123"}'
+
+$token = $login.token
+```
+
 Run semantic search requests:
 
-```bash
-curl "http://localhost:8080/users/search?skills=backend"
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri "http://localhost:8080/users/search?skills=backend" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
-```bash
-curl "http://localhost:8080/users/search?skills=database"
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri "http://localhost:8080/users/search?skills=database" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
-```bash
-curl "http://localhost:8080/users/search?skills=frontend"
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri "http://localhost:8080/users/search?skills=frontend" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
 Expected logical behavior:
@@ -142,8 +169,10 @@ Expected logical behavior:
 
 Existing exact and partial search behavior should still work:
 
-```bash
-curl "http://localhost:8080/users/search?skills=SQL"
+```powershell
+Invoke-RestMethod -Method Get `
+  -Uri "http://localhost:8080/users/search?skills=SQL" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
 Expected behavior:
@@ -154,7 +183,7 @@ Expected behavior:
 ## Troubleshooting
 
 - If no semantic results appear, check whether backfill was executed.
-- If backfill fails, check that `GEMINI_API_KEY` is set and valid.
+- If backfill fails, check that `embedding.enabled=true` and `GEMINI_API_KEY` is set and valid.
 - If the backfill endpoint returns `403`, check that `embedding.backfill.enabled=true` is set for the running backend.
 - If `skill_embeddings` is empty, no stored embeddings exist yet.
 - Unit tests use mocks and do not call the real Gemini API.
@@ -163,5 +192,5 @@ Expected behavior:
 
 - Keep `embedding.backfill.enabled=false` by default.
 - The backfill endpoint is intended for local/internal use only.
-- Do not commit real Gemini API keys.
+- Do not publish or share real Gemini API keys.
 - Do not expose `/internal/embeddings/backfill` as a normal public feature endpoint.

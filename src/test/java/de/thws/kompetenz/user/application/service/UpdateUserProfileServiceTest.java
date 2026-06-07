@@ -53,6 +53,24 @@ class UpdateUserProfileServiceTest {
     }
 
     @Test
+    void updateSkills_triggersWantedEmbeddingGeneration_whenWantedSkillsPresent() {
+        UUID userId = UUID.randomUUID();
+        User existing = new User(userId, "user", "u@test.com", "pwd");
+        when(userRepositoryPort.findUserById(eq(userId))).thenReturn(Optional.of(existing));
+
+        User saved = new User(userId, "user", "u@test.com", "pwd");
+        saved.setOfferedSkills(List.of());
+        saved.setWantedSkills(List.of("spring"));
+        when(userRepositoryPort.save(any(User.class))).thenReturn(saved);
+
+        updateUserProfileService.updateSkills(userId, List.of(), List.of("Spring"));
+
+        verify(userRepositoryPort).save(any(User.class));
+        verify(skillEmbeddingService, never()).ensureOfferedSkillEmbeddings(any());
+        verify(skillEmbeddingService).ensureWantedSkillEmbeddings(eq(saved));
+    }
+
+    @Test
     void updateSkills_doesNotTriggerEmbeddingGeneration_whenNoOfferedSkills() {
         UUID userId = UUID.randomUUID();
         User existing = new User(userId, "user", "u@test.com", "pwd");
@@ -67,6 +85,7 @@ class UpdateUserProfileServiceTest {
 
         verify(userRepositoryPort).save(any(User.class));
         verify(skillEmbeddingService, never()).ensureOfferedSkillEmbeddings(any());
+        verify(skillEmbeddingService, never()).ensureWantedSkillEmbeddings(any());
     }
 
     @Test
@@ -86,5 +105,25 @@ class UpdateUserProfileServiceTest {
 
         verify(userRepositoryPort).save(any(User.class));
         verify(skillEmbeddingService).ensureOfferedSkillEmbeddings(eq(saved));
+    }
+
+    @Test
+    void updateUser_triggersWantedEmbeddingGeneration_whenWantedSkillsPresent() {
+        UUID userId = UUID.randomUUID();
+        User existing = new User(userId, "user", "u@test.com", "pwd");
+        when(userRepositoryPort.findUserById(eq(userId))).thenReturn(Optional.of(existing));
+
+        User incoming = new User();
+        incoming.setWantedSkills(List.of("Docker"));
+
+        User saved = new User(userId, "user", "u@test.com", "pwd");
+        saved.setWantedSkills(List.of("docker"));
+        when(userRepositoryPort.save(any(User.class))).thenReturn(saved);
+
+        updateUserProfileService.updateUser(userId, incoming);
+
+        verify(userRepositoryPort).save(any(User.class));
+        verify(skillEmbeddingService, never()).ensureOfferedSkillEmbeddings(any());
+        verify(skillEmbeddingService).ensureWantedSkillEmbeddings(eq(saved));
     }
 }

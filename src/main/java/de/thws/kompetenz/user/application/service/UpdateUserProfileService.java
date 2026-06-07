@@ -29,9 +29,12 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
     user.setOfferedSkills(normalizeSkills(offeredSkills));
     user.setWantedSkills(normalizeSkills(wantedSkills));
     User saved = userRepositoryPort.save(user);
-    // Trigger embedding generation after user is persisted only when offered skills present
+    // Trigger embedding generation after user is persisted only when skills are present
     if (saved.getOfferedSkills() != null && !saved.getOfferedSkills().isEmpty()) {
         skillEmbeddingService.ensureOfferedSkillEmbeddings(saved);
+    }
+    if (saved.getWantedSkills() != null && !saved.getWantedSkills().isEmpty()) {
+        skillEmbeddingService.ensureWantedSkillEmbeddings(saved);
     }
     return saved;
 
@@ -63,9 +66,12 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
         existingUser.setOfferedSkills(normalizeSkills(incomingUser.getOfferedSkills()));
         existingUser.setWantedSkills(normalizeSkills(incomingUser.getWantedSkills()));
            User saved = userRepositoryPort.save(existingUser);
-           // Trigger embedding generation after user is persisted only when offered skills present
+           // Trigger embedding generation after user is persisted only when skills are present
            if (saved.getOfferedSkills() != null && !saved.getOfferedSkills().isEmpty()) {
                skillEmbeddingService.ensureOfferedSkillEmbeddings(saved);
+           }
+           if (saved.getWantedSkills() != null && !saved.getWantedSkills().isEmpty()) {
+               skillEmbeddingService.ensureWantedSkillEmbeddings(saved);
            }
            return saved;
 

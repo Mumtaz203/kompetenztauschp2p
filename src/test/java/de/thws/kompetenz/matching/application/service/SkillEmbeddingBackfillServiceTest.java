@@ -111,6 +111,40 @@ class SkillEmbeddingBackfillServiceTest {
     }
 
     @Test
+    void generateMissingOfferedSkillEmbeddingsForAllUsers_callsEmbeddingServiceForUsersWithWantedSkills() {
+        User user = userWithWantedSkills("learner", "Kubernetes");
+        SkillEmbedding embedding = wantedEmbedding(user.getId(), "Kubernetes");
+        when(userRepositoryPort.findAllUsers()).thenReturn(List.of(user));
+        when(skillEmbeddingService.ensureWantedSkillEmbeddings(user)).thenReturn(List.of(embedding));
+
+        BackfillResult result = skillEmbeddingBackfillService.generateMissingOfferedSkillEmbeddingsForAllUsers();
+
+        assertEquals(new BackfillResult(1, 1, 1), result);
+        verify(skillEmbeddingService, never()).ensureOfferedSkillEmbeddings(user);
+        verify(skillEmbeddingService).ensureWantedSkillEmbeddings(user);
+    }
+
+    @Test
+    void generateMissingOfferedSkillEmbeddingsForAllUsers_accumulatesOfferedAndWantedEmbeddingCounts() {
+        User user = userWithOfferedSkills("full-profile", "Java");
+        user.setWantedSkills(List.of("Kubernetes", "Docker"));
+        when(userRepositoryPort.findAllUsers()).thenReturn(List.of(user));
+        when(skillEmbeddingService.ensureOfferedSkillEmbeddings(user)).thenReturn(List.of(
+                embedding(user.getId(), "Java")
+        ));
+        when(skillEmbeddingService.ensureWantedSkillEmbeddings(user)).thenReturn(List.of(
+                wantedEmbedding(user.getId(), "Kubernetes"),
+                wantedEmbedding(user.getId(), "Docker")
+        ));
+
+        BackfillResult result = skillEmbeddingBackfillService.generateMissingOfferedSkillEmbeddingsForAllUsers();
+
+        assertEquals(new BackfillResult(1, 1, 3), result);
+        verify(skillEmbeddingService).ensureOfferedSkillEmbeddings(user);
+        verify(skillEmbeddingService).ensureWantedSkillEmbeddings(user);
+    }
+
+    @Test
     void generateMissingOfferedSkillEmbeddingsForAllUsers_accumulatesResultCounts() {
         User javaUser = userWithOfferedSkills("java-user", "Java", "Spring");
         User sqlUser = userWithOfferedSkills("sql-user", "SQL");
@@ -146,8 +180,18 @@ class SkillEmbeddingBackfillServiceTest {
         return user;
     }
 
+    private static User userWithWantedSkills(String username, String... wantedSkills) {
+        User user = new User(UUID.randomUUID(), username, username + "@test.com", "password");
+        user.setWantedSkills(List.of(wantedSkills));
+        return user;
+    }
+
     private static SkillEmbedding embedding(UUID userId, String skillText) {
         return new SkillEmbedding(UUID.randomUUID(), userId, skillText, SkillType.OFFERED, List.of(0.1, 0.2));
+    }
+
+    private static SkillEmbedding wantedEmbedding(UUID userId, String skillText) {
+        return new SkillEmbedding(UUID.randomUUID(), userId, skillText, SkillType.WANTED, List.of(0.1, 0.2));
     }
 
     private static List<User> listWithNullAnd(User user) {

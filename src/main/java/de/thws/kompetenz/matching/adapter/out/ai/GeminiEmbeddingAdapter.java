@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @ApplicationScoped
 public class GeminiEmbeddingAdapter implements EmbeddingClientPort {
@@ -27,10 +28,10 @@ public class GeminiEmbeddingAdapter implements EmbeddingClientPort {
     private final String model;
 
     public GeminiEmbeddingAdapter(
-            @ConfigProperty(name = "gemini.api.key") String apiKey,
+            @ConfigProperty(name = "gemini.api.key") Optional<String> apiKey,
             @ConfigProperty(name = "gemini.embedding.model", defaultValue = "gemini-embedding-001") String model
     ) {
-        this.apiKey = apiKey;
+        this.apiKey = apiKey.map(String::trim).orElse("");
         this.model = model;
     }
 
