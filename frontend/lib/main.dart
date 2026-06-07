@@ -10,6 +10,9 @@ import 'screens/welcome_screen.dart';
 import 'core/app_colors.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/search_results_screen.dart';
+import 'screens/admin_screen.dart';
+import 'screens/admin_users_screen.dart';
+import 'screens/admin_messages_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,6 +54,9 @@ class MyApp extends StatelessWidget {
             },
             '/my-profile': (context) => const MyProfileScreen(),
             '/edit-profile': (context) => const EditProfileScreen(),
+            '/admin': (context) => const AdminScreen(),
+            '/admin-users': (context) => const AdminUsersScreen(),
+            '/admin-messages': (context) => const AdminMessagesScreen(),
           },
 
           onGenerateRoute: (settings) {
