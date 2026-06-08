@@ -11,10 +11,10 @@ import de.thws.kompetenz.chatting.domain.Conversation;
 import de.thws.kompetenz.chatting.domain.Message;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
-import io.restassured.internal.http.HttpResponseException;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,14 +25,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
-@TestSecurity(user = "test-user", roles = {"USER", "ADMIN"})
+@TestSecurity(user = "test-user", roles = "USER")
 class ConversationResourceTest {
 
     @InjectMock ConversationUseCaseI conversationUseCase;
@@ -40,6 +40,9 @@ class ConversationResourceTest {
     @InjectMock UserRepositoryPort userRepositoryPort;
     @InjectMock MessageUseCaseI messageUseCase;
     @InjectMock MessageRestMapper messageRestMapper;
+
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
 
     @InjectMock
     JsonWebToken jwt;          // Keep this
@@ -109,8 +112,10 @@ class ConversationResourceTest {
         UUID id = UUID.randomUUID();
         when(conversationUseCase.getConversationById(id)).thenReturn(Optional.empty());
 
-        given().when().get("/conversations/{id}", id)
-                .then().statusCode(404);
+        assertStatus(404, () -> given()
+                .when().get("/conversations/{id}", id)
+                .then()
+                .statusCode(404));
     }
 
     @Test
@@ -172,13 +177,12 @@ class ConversationResourceTest {
 
         when(conversationUseCase.findBetweenUsers(user1, user2)).thenReturn(Optional.empty());
 
-
-                given()
-                        .queryParam("user1Id", user1)
-                        .queryParam("user2Id", user2)
-                        .when().get("/conversations/between")
-                        .then()
-                        .statusCode(404);
+        assertStatus(404, () -> given()
+                .queryParam("user1Id", user1)
+                .queryParam("user2Id", user2)
+                .when().get("/conversations/between")
+                .then()
+                .statusCode(404));
     }
 
     @Test
@@ -231,18 +235,18 @@ class ConversationResourceTest {
 
         User u1 = new User(user1, "samet", "samet@mail.com", "x");
         User u2 = new User(user2, "mumtaz", "mumtaz@mail.com", "x");
-
-        when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.of(conversation));
-        when(messageUseCase.getMessagesByConversationId(conversationId)).thenReturn(List.of(message));
-        when(messageRestMapper.toResponse(message)).thenReturn(messageResponse);
-        when(userRepositoryPort.findUserById(user1)).thenReturn(Optional.of(u1));
-        when(userRepositoryPort.findUserById(user2)).thenReturn(Optional.of(u2));
         ShowConversationResponse showResponse = new ShowConversationResponse();
         showResponse.setConversationId(conversationId);
         showResponse.setUser1Id(user1);
         showResponse.setUser2Id(user2);
         showResponse.setCreatedAt(conversation.getCreatedAt());
         showResponse.setLastMessageAt(conversation.getLastMessageAt());
+
+        when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.of(conversation));
+        when(messageUseCase.getMessagesByConversationId(conversationId)).thenReturn(List.of(message));
+        when(messageRestMapper.toResponse(message)).thenReturn(messageResponse);
+        when(userRepositoryPort.findUserById(user1)).thenReturn(Optional.of(u1));
+        when(userRepositoryPort.findUserById(user2)).thenReturn(Optional.of(u2));
         when(conversationRestMapper.toShowConversationResponse(conversation)).thenReturn(showResponse);
 
         given()
@@ -260,7 +264,9 @@ class ConversationResourceTest {
         UUID conversationId = UUID.randomUUID();
         when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.empty());
 
-        given().when().get("/conversations/{id}/details", conversationId)
-                .then().statusCode(404);
+        assertStatus(404, () -> given()
+                .when().get("/conversations/{id}/details", conversationId)
+                .then()
+                .statusCode(404));
     }
 }

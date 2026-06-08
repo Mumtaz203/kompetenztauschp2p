@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/matching_service.dart';
+import '../services/match_request_service.dart';
+import '../services/auth_service.dart';
 import '../core/app_colors.dart';
-import 'chat_screen.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String skillQuery;
@@ -15,11 +16,85 @@ class SearchResultsScreen extends StatefulWidget {
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
   late Future<List<UserModel>> searchResults;
+  final MatchRequestService requestService = MatchRequestService();
+
+  final Set<String> sentRequests = {};
+  final Set<String> incomingRequests = {};
+  final Set<String> matchedUsers = {};
 
   @override
   void initState() {
     super.initState();
     searchResults = MatchingService().searchUsersBySkill(widget.skillQuery);
+    _loadUserConnections();
+  }
+
+  Future<void> _loadUserConnections() async {
+    try {
+      final currentUserId = await AuthService.getStoredUserId();
+      if (currentUserId != null) {
+        final outgoing = await requestService.getOutgoingRequests(currentUserId);
+        final incoming = await requestService.getIncomingRequests(currentUserId);
+        final matches = await requestService.getMatches(currentUserId);
+
+        if (mounted) {
+          setState(() {
+            for (var req in outgoing) {
+              sentRequests.add(req.receiverId);
+            }
+            for (var req in incoming) {
+              incomingRequests.add(req.senderId);
+            }
+            for (var match in matches) {
+              final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
+              matchedUsers.add(otherId);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Connections load failed: $e");
+    }
+  }
+
+  Future<void> _sendMatchRequest(String receiverId) async {
+    try {
+      final currentUserId = await AuthService.getStoredUserId();
+      if (currentUserId == null) throw Exception("User not logged in");
+
+      setState(() {
+        sentRequests.add(receiverId);
+      });
+
+      await requestService.sendRequest(currentUserId, receiverId);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Match request sent successfully!'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    } catch (e) {
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('pending') || errorMsg.contains('already')) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request is already pending.')),
+        );
+      } else {
+        setState(() {
+          sentRequests.remove(receiverId);
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -38,14 +113,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       body: FutureBuilder<List<UserModel>>(
         future: searchResults,
         builder: (context, snapshot) {
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: AppColors.primaryBlue),
             );
-          }
-
-          else if (snapshot.hasError) {
+          } else if (snapshot.hasError) {
             String errorMsg = snapshot.error.toString().replaceAll('Exception: ', '');
             return Center(
               child: Padding(
@@ -53,9 +125,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                 child: Text(errorMsg, style: const TextStyle(color: Colors.redAccent, fontSize: 16)),
               ),
             );
-          }
-
-          else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
                   'No users found with that skill.',
@@ -64,14 +134,38 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             );
           }
 
+          return FutureBuilder<String?>(
+            future: AuthService.getStoredUserId(),
+            builder: (context, userIdSnapshot) {
+              if (userIdSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primaryBlue),
+                );
+              }
 
-          final users = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return _buildResultCard(user);
+              final myId = userIdSnapshot.data;
+
+              final users = snapshot.data!
+                  .where((user) => user.id != myId)
+                  .toList();
+
+              if (users.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No users found with that skill.',
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  return _buildResultCard(user);
+                },
+              );
             },
           );
         },
@@ -82,6 +176,24 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   Widget _buildResultCard(UserModel user) {
     String teaches = user.offeredSkills.isNotEmpty ? user.offeredSkills.join(', ') : 'None';
     String wants = user.wantedSkills.isNotEmpty ? user.wantedSkills.join(', ') : 'None';
+
+    bool isMatched = matchedUsers.contains(user.id);
+    bool hasSentRequest = sentRequests.contains(user.id);
+    bool hasIncoming = incomingRequests.contains(user.id);
+
+    String buttonText = 'Send Request';
+    bool isDisabled = false;
+
+    if (isMatched) {
+      buttonText = 'Already Matched';
+      isDisabled = true;
+    } else if (hasSentRequest) {
+      buttonText = 'Request Sent';
+      isDisabled = true;
+    } else if (hasIncoming) {
+      buttonText = 'Check Requests Tab';
+      isDisabled = true;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -103,21 +215,16 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           Text('Wants to learn: $wants', style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 16),
           Center(
-            child: TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(
-                      otherUserId: user.id,
-                      otherUserName: user.username,
-                    ),
-                  ),
-                );
-              },
-              child: const Text(
-                'Connect',
-                style: TextStyle(color: Color(0xFFD8B4E2), fontWeight: FontWeight.bold),
+
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDisabled ? Colors.grey : AppColors.primaryBlue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: isDisabled ? null : () => _sendMatchRequest(user.id),
+              child: Text(
+                buttonText,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
           ),

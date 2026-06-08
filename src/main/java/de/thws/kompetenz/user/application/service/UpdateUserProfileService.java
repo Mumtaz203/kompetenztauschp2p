@@ -4,6 +4,7 @@ import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 
 
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
+import de.thws.kompetenz.matching.application.service.SkillEmbeddingService;
 import de.thws.kompetenz.user.domain.model.User;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -15,16 +16,27 @@ import java.util.UUID;
 @ApplicationScoped
 public class UpdateUserProfileService implements UpdateUserProfileUseCase {
     private final UserRepositoryPort userRepositoryPort;
-    public UpdateUserProfileService(UserRepositoryPort userRepositoryPort) {
+    private final SkillEmbeddingService skillEmbeddingService;
+
+    public UpdateUserProfileService(UserRepositoryPort userRepositoryPort, SkillEmbeddingService skillEmbeddingService) {
         this.userRepositoryPort = userRepositoryPort;
+        this.skillEmbeddingService = skillEmbeddingService;
     }
     @Override
     public User updateSkills(UUID userId, List<String> offeredSkills, List<String> wantedSkills) {
      User user= userRepositoryPort.findUserById(userId).orElseThrow(()->
              new IllegalArgumentException("User not found "+userId) );
-     user.setOfferedSkills(normalizeSkills(offeredSkills));
-     user.setWantedSkills(normalizeSkills(wantedSkills));
-    return userRepositoryPort.save(user);
+    user.setOfferedSkills(normalizeSkills(offeredSkills));
+    user.setWantedSkills(normalizeSkills(wantedSkills));
+    User saved = userRepositoryPort.save(user);
+    // Trigger embedding generation after user is persisted only when skills are present
+    if (saved.getOfferedSkills() != null && !saved.getOfferedSkills().isEmpty()) {
+        skillEmbeddingService.ensureOfferedSkillEmbeddings(saved);
+    }
+    if (saved.getWantedSkills() != null && !saved.getWantedSkills().isEmpty()) {
+        skillEmbeddingService.ensureWantedSkillEmbeddings(saved);
+    }
+    return saved;
 
 
     }
@@ -53,7 +65,15 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
         }
         existingUser.setOfferedSkills(normalizeSkills(incomingUser.getOfferedSkills()));
         existingUser.setWantedSkills(normalizeSkills(incomingUser.getWantedSkills()));
-       return userRepositoryPort.save(existingUser);
+           User saved = userRepositoryPort.save(existingUser);
+           // Trigger embedding generation after user is persisted only when skills are present
+           if (saved.getOfferedSkills() != null && !saved.getOfferedSkills().isEmpty()) {
+               skillEmbeddingService.ensureOfferedSkillEmbeddings(saved);
+           }
+           if (saved.getWantedSkills() != null && !saved.getWantedSkills().isEmpty()) {
+               skillEmbeddingService.ensureWantedSkillEmbeddings(saved);
+           }
+           return saved;
 
 
 

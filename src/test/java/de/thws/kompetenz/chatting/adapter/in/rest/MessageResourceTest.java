@@ -4,10 +4,10 @@ import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.MessageRestMapper;
 import de.thws.kompetenz.chatting.application.port.in.MessageUseCaseI;
 import de.thws.kompetenz.chatting.domain.Message;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
-import io.restassured.internal.http.HttpResponseException;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,18 +17,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@TestSecurity(user = "test-user", roles = {"USER", "ADMIN"})
+@TestSecurity(user = "test-user", roles = "USER")
 class MessageResourceTest {
 
     @InjectMock MessageUseCaseI messageUseCase;
     @InjectMock MessageRestMapper messageRestMapper;
+
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
 
     @InjectMock
     JsonWebToken jwt;          // Keep this
@@ -86,7 +89,10 @@ class MessageResourceTest {
         UUID id = UUID.randomUUID();
         when(messageUseCase.getMessageById(id)).thenReturn(Optional.empty());
 
-       given().when().get("/messages/{id}", id).then().statusCode(404);
+        assertStatus(404, () -> given()
+                .when().get("/messages/{id}", id)
+                .then()
+                .statusCode(404));
     }
 
     @Test
