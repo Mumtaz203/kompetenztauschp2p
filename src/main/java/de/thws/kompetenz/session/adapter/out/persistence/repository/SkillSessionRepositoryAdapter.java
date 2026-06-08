@@ -35,8 +35,15 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
             return mapper.toDomain(entity);
         }
 
-        SkillSessionEntity existingEntity = repository.findByIdOptional(session.getId())
-                .orElseThrow(() -> new IllegalArgumentException("No existing session found for this id"));
+        Optional<SkillSessionEntity> existingEntityOptional = repository.findByIdOptional(session.getId());
+
+        if (existingEntityOptional.isEmpty()) {
+            SkillSessionEntity entity = mapper.toEntity(session);
+            repository.persist(entity);
+            return mapper.toDomain(entity);
+        }
+
+        SkillSessionEntity existingEntity = existingEntityOptional.get();
 
         existingEntity.status = session.getStatus();
         existingEntity.completedAt = session.getCompletedAt();
@@ -60,5 +67,11 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
     @Override
     public boolean existsByMatchingRequestId(UUID matchingRequestId) {
         return repository.existsByMatchingRequestId(matchingRequestId);
+    }
+
+    @Override
+    public Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId) {
+        return repository.findByMatchingRequestId(matchingRequestId)
+                .map(mapper::toDomain);
     }
 }

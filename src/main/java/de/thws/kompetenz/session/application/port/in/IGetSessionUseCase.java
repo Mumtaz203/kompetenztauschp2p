@@ -12,4 +12,6 @@ public interface IGetSessionUseCase {
     boolean isParticipant(UUID sessionId, UUID userId);
 
     boolean areParticipants(UUID sessionId, UUID firstUserId, UUID secondUserId);
+    Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId);
+
 }

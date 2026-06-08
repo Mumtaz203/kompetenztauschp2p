@@ -1,7 +1,6 @@
 package de.thws.kompetenz.rating.adapter.out.persistence.entity;
 
 import de.thws.kompetenz.rating.domain.RatingStatus;
-import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.persistence.*;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -10,41 +9,46 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name="sessionRating",
-                        uniqueConstraints = {@UniqueConstraint(columnNames = {"sessionID", "senderUserID"}
-                        )
-})
-
+@Table(
+        name = "session_ratings",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"session_id", "sender_user_id"})
+        }
+)
 public class SessionRatingEntity {
 
     @Id
     @UuidGenerator
-    UUID id;
+    @Column(name = "id", columnDefinition = "UUID")
+    private UUID id;
 
-    @Column(name="sessionID", nullable = false, columnDefinition = "UUID")
-    UUID sessionId;
+    @Column(name = "session_id", nullable = false, columnDefinition = "UUID")
+    private UUID sessionId;
 
-    @Column(name="senderUserID", nullable = false, columnDefinition = "UUID")
-    UUID senderUserId;
+    @Column(name = "sender_user_id", nullable = false, columnDefinition = "UUID")
+    private UUID senderUserId;
 
-    @Column(name="receiverUserID", nullable = false, columnDefinition = "UUID")
-    UUID receiverUserId;
+    @Column(name = "receiver_user_id", nullable = false, columnDefinition = "UUID")
+    private UUID receiverUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name="status", nullable = false)
-    RatingStatus status;
+    @Column(name = "status", nullable = false)
+    private RatingStatus status;
 
     @Column(name = "points", nullable = false, precision = 2, scale = 1)
-    BigDecimal points;
+    private BigDecimal points;
 
-    @Column(name="comment", length = 1000)
-    String comment;
+    @Column(name = "comment", length = 1000)
+    private String comment;
 
     @Column(name = "created_at", nullable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "published_at")
-    LocalDateTime publishedAt;
+    private LocalDateTime publishedAt;
+
+    public SessionRatingEntity() {
+    }
 
     public SessionRatingEntity(UUID id, UUID sessionId, UUID senderUserId, UUID receiverUserId,
                                RatingStatus status, BigDecimal points, String comment,
@@ -60,76 +64,72 @@ public class SessionRatingEntity {
         this.publishedAt = publishedAt;
     }
 
-    public SessionRatingEntity() {
-
-    }
-
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public UUID getSessionId() {
         return sessionId;
     }
 
-    public void setSessionId(UUID sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public UUID getReceiverUserId() {
+    public UUID getSenderUserId() {
         return senderUserId;
     }
 
-    public void setSenderUserId(UUID senderUserId) {
-        this.senderUserId = senderUserId;
-    }
-
-    public UUID getSenderUserId() {
+    public UUID getReceiverUserId() {
         return receiverUserId;
-    }
-
-    public void setReceiverUserId(UUID receiverUserId) {
-        this.receiverUserId = receiverUserId;
     }
 
     public RatingStatus getStatus() {
         return status;
     }
 
-    public void setStatus(RatingStatus status) {
-        this.status = status;
-    }
-
     public BigDecimal getPoints() {
         return points;
-    }
-
-    public void setPoints(BigDecimal points) {
-        this.points = points;
     }
 
     public String getComment() {
         return comment;
     }
 
-    public void setComment(String comment) {
-        this.comment = comment;
-    }
-
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getPublishedAt() {
         return publishedAt;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public void setSenderUserId(UUID senderUserId) {
+        this.senderUserId = senderUserId;
+    }
+
+    public void setReceiverUserId(UUID receiverUserId) {
+        this.receiverUserId = receiverUserId;
+    }
+
+    public void setStatus(RatingStatus status) {
+        this.status = status;
+    }
+
+    public void setPoints(BigDecimal points) {
+        this.points = points;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public void setPublishedAt(LocalDateTime publishedAt) {

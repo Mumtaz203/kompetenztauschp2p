@@ -2,6 +2,7 @@ package de.thws.kompetenz.chatting.adapter.in.rest;
 
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.ConversationResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.dto.MessageResponse;
+import de.thws.kompetenz.chatting.adapter.in.rest.dto.ShowConversationResponse;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.ConversationRestMapper;
 import de.thws.kompetenz.chatting.adapter.in.rest.mapper.MessageRestMapper;
 import de.thws.kompetenz.chatting.application.port.in.ConversationUseCaseI;
@@ -12,6 +13,8 @@ import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
+import io.restassured.internal.http.HttpResponseException;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,10 +27,12 @@ import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = {"USER", "ADMIN"})
 class ConversationResourceTest {
 
     @InjectMock ConversationUseCaseI conversationUseCase;
@@ -104,10 +109,8 @@ class ConversationResourceTest {
         UUID id = UUID.randomUUID();
         when(conversationUseCase.getConversationById(id)).thenReturn(Optional.empty());
 
-        given()
-                .when().get("/conversations/{id}", id)
-                .then()
-                .statusCode(404);
+        given().when().get("/conversations/{id}", id)
+                .then().statusCode(404);
     }
 
     @Test
@@ -169,12 +172,13 @@ class ConversationResourceTest {
 
         when(conversationUseCase.findBetweenUsers(user1, user2)).thenReturn(Optional.empty());
 
-        given()
-                .queryParam("user1Id", user1)
-                .queryParam("user2Id", user2)
-                .when().get("/conversations/between")
-                .then()
-                .statusCode(404);
+
+                given()
+                        .queryParam("user1Id", user1)
+                        .queryParam("user2Id", user2)
+                        .when().get("/conversations/between")
+                        .then()
+                        .statusCode(404);
     }
 
     @Test
@@ -233,6 +237,13 @@ class ConversationResourceTest {
         when(messageRestMapper.toResponse(message)).thenReturn(messageResponse);
         when(userRepositoryPort.findUserById(user1)).thenReturn(Optional.of(u1));
         when(userRepositoryPort.findUserById(user2)).thenReturn(Optional.of(u2));
+        ShowConversationResponse showResponse = new ShowConversationResponse();
+        showResponse.setConversationId(conversationId);
+        showResponse.setUser1Id(user1);
+        showResponse.setUser2Id(user2);
+        showResponse.setCreatedAt(conversation.getCreatedAt());
+        showResponse.setLastMessageAt(conversation.getLastMessageAt());
+        when(conversationRestMapper.toShowConversationResponse(conversation)).thenReturn(showResponse);
 
         given()
                 .when().get("/conversations/{id}/details", conversationId)
@@ -249,9 +260,7 @@ class ConversationResourceTest {
         UUID conversationId = UUID.randomUUID();
         when(conversationUseCase.getConversationById(conversationId)).thenReturn(Optional.empty());
 
-        given()
-                .when().get("/conversations/{id}/details", conversationId)
-                .then()
-                .statusCode(404);
+        given().when().get("/conversations/{id}/details", conversationId)
+                .then().statusCode(404);
     }
 }

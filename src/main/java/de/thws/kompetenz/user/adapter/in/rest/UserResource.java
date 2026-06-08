@@ -1,5 +1,7 @@
 package de.thws.kompetenz.user.adapter.in.rest;
 
+import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
+import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.GetAllUsersResponse;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.UserResponse;
 import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
@@ -12,6 +14,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/users")
@@ -22,26 +27,43 @@ public class UserResource {
     private final UserRepositoryPort userRepositoryPort;
     private final UserRestMapper userRestMapper;
     private final UserUseCaseI userUseCase;
+    private IGetRatingSummaryUseCase getRatingSummaryUseCase;
 
-    public UserResource(UserRepositoryPort userRepositoryPort, UserRestMapper userRestMapper, UserUseCaseI userUseCase) {
+    public UserResource(UserRepositoryPort userRepositoryPort, UserRestMapper userRestMapper, UserUseCaseI userUseCase,
+                        IGetRatingSummaryUseCase getRatingSummaryUseCase) {
         this.userRepositoryPort = userRepositoryPort;
         this.userRestMapper = userRestMapper;
         this.userUseCase = userUseCase;
+        this.getRatingSummaryUseCase = getRatingSummaryUseCase;
     }
 
     @GET
     @Path("/getAllUsers")
     public Response getAllUsers() {
-        GetAllUsersResponse response = userRestMapper.toGetAllUsersResponse(userRepositoryPort.findAllUsers());
+        List<User> users = userRepositoryPort.findAllUsers();
+
+        Map<UUID, RatingSummary> ratingSummaries = new HashMap<>();
+
+        for (User user : users) {
+            RatingSummary summary = getRatingSummaryUseCase.getRatingSummaryForUser(user.getId());
+            ratingSummaries.put(user.getId(), summary);
+        }
+
+        GetAllUsersResponse response = userRestMapper.toGetAllUsersResponse(users, ratingSummaries);
+
         return Response.ok(response).build();
     }
 
     @GET
     @Path("/getUser/{id}")
     public Response getUserById(@PathParam("id") UUID id) {
+
         return userRepositoryPort.findUserById(id)
-                .map(userRestMapper::toGetUserResponse)
-                .map(user -> Response.ok(user).build())
+                .map(user -> {
+                    RatingSummary ratingSummary1 = getRatingSummaryUseCase.getRatingSummaryForUser(user.getId());
+                    return userRestMapper.toGetUserResponse(user, ratingSummary1);
+                })
+                .map(userReponse -> Response.ok(userReponse).build())
                 .orElseGet(() -> Response.status(Response.Status.NOT_FOUND).build());
     }
     @DELETE

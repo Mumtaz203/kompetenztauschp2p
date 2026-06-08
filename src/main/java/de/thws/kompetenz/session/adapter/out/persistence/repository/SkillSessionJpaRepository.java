@@ -5,6 +5,7 @@ import de.thws.kompetenz.session.domain.SessionStatus;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -27,5 +28,8 @@ public class SkillSessionJpaRepository implements PanacheRepositoryBase<SkillSes
 
     public boolean existsByMatchingRequestId(UUID matchingRequestId) {
         return count("matchingRequestId = ?1", matchingRequestId) > 0;
+    }
+    public Optional<SkillSessionEntity> findByMatchingRequestId(UUID matchingRequestId) {
+        return find("matchingRequestId", matchingRequestId).firstResultOptional();
     }
 }

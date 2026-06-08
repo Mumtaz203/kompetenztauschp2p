@@ -6,6 +6,8 @@ import de.thws.kompetenz.chatting.application.port.in.MessageUseCaseI;
 import de.thws.kompetenz.chatting.domain.Message;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
+import io.restassured.internal.http.HttpResponseException;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,9 +20,11 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = {"USER", "ADMIN"})
 class MessageResourceTest {
 
     @InjectMock MessageUseCaseI messageUseCase;
@@ -82,10 +86,7 @@ class MessageResourceTest {
         UUID id = UUID.randomUUID();
         when(messageUseCase.getMessageById(id)).thenReturn(Optional.empty());
 
-        given()
-                .when().get("/messages/{id}", id)
-                .then()
-                .statusCode(404);
+       given().when().get("/messages/{id}", id).then().statusCode(404);
     }
 
     @Test

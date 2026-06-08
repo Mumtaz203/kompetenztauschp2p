@@ -7,6 +7,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,14 @@ public class SessionRatingJpaRepository implements PanacheRepositoryBase<Session
                 sessionId,
                 senderUserId
         ) > 0;
+    }
+
+    public List<SessionRatingEntity> findPendingRatingsBySessionId(UUID sessionId) {
+        return list(
+                "sessionId = ?1 and status = ?2",
+                sessionId,
+                RatingStatus.PENDING
+        );
     }
 
     public BigDecimal sumPublishedPointsByReceiverUserId(UUID receiverUserId) {

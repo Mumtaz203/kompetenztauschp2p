@@ -111,6 +111,22 @@ public class SkillSession {
         this.ratingWindowEndsAt = ratingWindowEndsAt;
     }
 
+    public void closeRatingWindow() {
+        if (this.status != SessionStatus.RATING_OPEN) {
+            throw new IllegalStateException("Only sessions with an open rating window can be closed");
+        }
+
+        this.status = SessionStatus.RATING_CLOSED;
+    }
+
+    public void expireRatingWindowForTesting() {
+        if (this.status != SessionStatus.RATING_OPEN) {
+            throw new IllegalStateException("Only an open rating window can be expired");
+        }
+
+        this.ratingWindowEndsAt = LocalDateTime.now().minusMinutes(1);
+    }
+
 
     public UUID getMatchingRequestId() {
         return matchingRequestId;

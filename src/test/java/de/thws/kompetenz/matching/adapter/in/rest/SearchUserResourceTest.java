@@ -1,31 +1,47 @@
 package de.thws.kompetenz.matching.adapter.in.rest;
 
 import de.thws.kompetenz.matching.application.port.in.SearchUserUseCase;
+import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
+import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.user.domain.model.User;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
+import io.restassured.internal.http.HttpResponseException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = {"USER"})
 class SearchUserResourceTest {
 
     @InjectMock
     SearchUserUseCase searchUserUseCase;
+    @InjectMock
+    IGetRatingSummaryUseCase getRatingSummaryUseCase;
+
+    @BeforeEach
+    void setUp(){
+        when(getRatingSummaryUseCase.getRatingSummaryForUser(any(UUID.class)))
+                .thenReturn(new RatingSummary(BigDecimal.ZERO, 0));
+    }
 
     @Test
     void search_returns400_whenNoSearchTermsProvided() {
-
         given()
-                .when().get("/users/search")
+                .when()
+                .get("/users/search")
                 .then()
                 .statusCode(400);
 
@@ -33,7 +49,8 @@ class SearchUserResourceTest {
 
     @Test
     void search_returns400_whenTermIsTooShort() {
-        given().queryParam("skills", "js")
+        given()
+                .queryParam("skills", "js")
                 .when()
                 .get("/users/search")
                 .then()
@@ -43,10 +60,10 @@ class SearchUserResourceTest {
 
     @Test
     void search_returns400_whenSkillsParameterIsBlank() {
-
-
         given()
-                .when().get("/users/search")
+                .queryParam("skills", " ")
+                .when()
+                .get("/users/search")
                 .then()
                 .statusCode(400);
 
@@ -153,6 +170,26 @@ class SearchUserResourceTest {
                 .statusCode(200)
                 .body("[0].offeredSkills", hasItem("sql"))
                 .body("[0].wantedSkills", empty());
+    }
+
+    @Test
+    void search_responseContainsRatingSummaryFields() {
+        User user = searchUser("java_exact_user", "java");
+
+        when(searchUserUseCase.searchBySkills(eq(List.of("java"))))
+                .thenReturn(List.of(user));
+
+        when(getRatingSummaryUseCase.getRatingSummaryForUser(user.getId()))
+                .thenReturn(new RatingSummary(BigDecimal.valueOf(4.5), 2));
+
+        given()
+                .queryParam("skill", "java")
+                .when().get("/users/search")
+                .then()
+                .statusCode(200)
+                .body("[0].username", equalTo("java_exact_user"))
+                .body("[0].averagePoints", equalTo(4.5f))
+                .body("[0].ratingCount", equalTo(2));
     }
 
     private static User searchUser(String username, String... skills) {

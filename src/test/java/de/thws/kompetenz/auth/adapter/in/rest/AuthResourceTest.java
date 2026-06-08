@@ -1,10 +1,11 @@
-/*package de.thws.kompetenz.auth.adapter.in.rest;
+package de.thws.kompetenz.auth.adapter.in.rest;
 
 import de.thws.kompetenz.auth.adapter.in.rest.dto.*;
 import de.thws.kompetenz.auth.adapter.in.rest.mapper.AuthRestMapper;
 import de.thws.kompetenz.auth.application.port.in.IGetCurrentUserUseCase;
 import de.thws.kompetenz.auth.application.port.in.ILoginUseCase;
 import de.thws.kompetenz.auth.application.port.in.RegisterUseCase;
+import de.thws.kompetenz.auth.application.result.LoginResult;
 import de.thws.kompetenz.user.domain.model.User;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -75,11 +76,11 @@ class AuthResourceTest {
     void testLogin() {
         LoginRequest request = new LoginRequest("user@example.com", "mysecurepassword");
 
-        LoginResponse expectedResponse = new LoginResponse("fake-jwt-token", "Bearer");
+        LoginResponse expectedResponse = new LoginResponse("fake-jwt-token", "Bearer", "USER");
 
         when(authRestMapper.toLoginCommand(any())).thenReturn(mock());
-        when(loginUseCase.login(any())).thenReturn("fake-jwt-token");
-        when(authRestMapper.toLoginResponse(anyString())).thenReturn(expectedResponse);
+        when(loginUseCase.login(any())).thenReturn(new LoginResult("fake-jwt-token", "USER"));
+        when(authRestMapper.toLoginResponse(anyString(), anyString())).thenReturn(expectedResponse);
 
         var response = authResource.login(request);
 
@@ -88,7 +89,7 @@ class AuthResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "test-user", roles = "user")
+    @TestSecurity(user = "test-user", roles = "USER")
     void testGetCurrentUser() {
         UUID userId = UUID.randomUUID();
         User user = mock(User.class);
@@ -110,11 +111,10 @@ class AuthResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "test-user", roles = "user")   // or whatever roles you need
+    @TestSecurity(user = "test-user", roles = "USER")
     void testSecuredEndpoint() {
         String result = authResource.test();
         assertEquals("secured", result);
     }
 }
 
- */

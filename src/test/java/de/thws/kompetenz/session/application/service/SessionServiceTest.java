@@ -14,15 +14,17 @@ class SessionServiceTest {
 
     @Test
     void createSession_shouldCreateActiveSession() {
+        UUID matchingRequestId = UUID.randomUUID();
         UUID requesterId = UUID.randomUUID();
         UUID receiverId = UUID.randomUUID();
 
         InMemorySessionRepository repository = new InMemorySessionRepository();
         SessionService service = new SessionService(repository);
 
-        SkillSession session = service.createSession(requesterId, receiverId);
+        SkillSession session = service.createSession(matchingRequestId, requesterId, receiverId);
 
         assertNotNull(session.getId());
+        assertEquals(matchingRequestId, session.getMatchingRequestId());
         assertEquals(requesterId, session.getRequesterUserId());
         assertEquals(receiverId, session.getReceiverUserId());
         assertEquals(SessionStatus.ACTIVE, session.getStatus());
@@ -32,6 +34,7 @@ class SessionServiceTest {
 
     @Test
     void createSession_shouldThrow_whenSameUserIsUsedTwice() {
+        UUID matchingRequestId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
         InMemorySessionRepository repository = new InMemorySessionRepository();
@@ -39,23 +42,42 @@ class SessionServiceTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> service.createSession(userId, userId)
+                () -> service.createSession(matchingRequestId, userId, userId)
         );
     }
 
     @Test
-    void createSession_shouldThrow_whenActiveSessionAlreadyExists() {
+    void createSession_shouldThrow_whenActiveSessionAlreadyExistsBetweenUsers() {
+        UUID firstMatchingRequestId = UUID.randomUUID();
+        UUID secondMatchingRequestId = UUID.randomUUID();
         UUID requesterId = UUID.randomUUID();
         UUID receiverId = UUID.randomUUID();
 
         InMemorySessionRepository repository = new InMemorySessionRepository();
         SessionService service = new SessionService(repository);
 
-        service.createSession(requesterId, receiverId);
+        service.createSession(firstMatchingRequestId, requesterId, receiverId);
 
         assertThrows(
                 IllegalStateException.class,
-                () -> service.createSession(requesterId, receiverId)
+                () -> service.createSession(secondMatchingRequestId, requesterId, receiverId)
+        );
+    }
+
+    @Test
+    void createSession_shouldThrow_whenSessionAlreadyExistsForMatchingRequest() {
+        UUID matchingRequestId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
+
+        InMemorySessionRepository repository = new InMemorySessionRepository();
+        SessionService service = new SessionService(repository);
+
+        service.createSession(matchingRequestId, requesterId, receiverId);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.createSession(matchingRequestId, UUID.randomUUID(), UUID.randomUUID())
         );
     }
 
@@ -86,6 +108,12 @@ class SessionServiceTest {
 
             return savedSession.getStatus() == SessionStatus.ACTIVE
                     && savedSession.isBetween(requesterUserId, receiverUserId);
+        }
+
+        @Override
+        public boolean existsByMatchingRequestId(UUID matchingRequestId) {
+            return savedSession != null
+                    && savedSession.getMatchingRequestId().equals(matchingRequestId);
         }
     }
 }

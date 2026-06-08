@@ -15,4 +15,7 @@ public interface ISessionRepositoryPort {
 
     boolean existsByMatchingRequestId(UUID matchingRequestId);
 
+    Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId);
+
+
 }

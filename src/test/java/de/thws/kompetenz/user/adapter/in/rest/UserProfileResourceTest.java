@@ -1,14 +1,14 @@
-/*package de.thws.kompetenz.user.adapter.in.rest;
+package de.thws.kompetenz.user.adapter.in.rest;
 
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.*;
 import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
-import de.thws.kompetenz.user.application.port.in.IGetUserByIdUseCase;
 import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.user.domain.model.exception.UserNotFoundException;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
+import io.restassured.internal.http.HttpResponseException;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -33,8 +34,6 @@ class UserProfileResourceTest {
     @InjectMock
     UserRestMapper userRestMapper;
 
-    @InjectMock
-    IGetUserByIdUseCase iGetUserByIdUseCase;
 
     private final UUID userId = UUID.randomUUID();
 
@@ -91,14 +90,13 @@ class UserProfileResourceTest {
     @TestSecurity(user = "test-user", roles = "USER")
     void updateName_shouldReturn400_whenInvalid() {
         UpdateNameRequest request = new UpdateNameRequest("");
-
-        Response response = given()
+        given()
                 .contentType("application/json")
                 .body(request)
                 .when()
-                .put("/users/{id}/updateName", userId);
-
-        assertEquals(400, response.statusCode());
+                .put("/users/{id}/updateName", userId)
+                .then()
+                .statusCode(400); // or 404
     }
 
     // --- updateUser tests ---
@@ -129,14 +127,12 @@ class UserProfileResourceTest {
                 List.of("Go"),
                 List.of("Kafka")
         );
-
-        Response response = given()
-                .contentType("application/json")
-                .body(request)
-                .when()
-                .put("/users/{id}/updateUser", userId);
-
-        assertEquals(400, response.statusCode());
+        given()
+                        .contentType("application/json")
+                        .body(request)
+                        .when()
+                        .put("/users/{id}/updateUser", userId)
+                .then().statusCode(400);
     }
 
     // --- updateSkills tests ---
@@ -230,14 +226,12 @@ class UserProfileResourceTest {
         when(updateUserProfileUseCase.updateUser(eq(unknownUserId), any(User.class)))
                 .thenThrow(new UserNotFoundException(unknownUserId));
 
-        Response response = given()
-                .contentType("application/json")
-                .body(request)
-                .when()
-                .put("/users/{id}/updateUser", unknownUserId);
-
-        assertEquals(404, response.statusCode());
+        given()
+                        .contentType("application/json")
+                        .body(request)
+                        .when()
+                        .put("/users/{id}/updateUser", unknownUserId)
+                .then().statusCode(404);
     }
 }
 
- */

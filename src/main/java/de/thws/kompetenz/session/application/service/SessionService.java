@@ -1,9 +1,7 @@
 package de.thws.kompetenz.session.application.service;
 
 
-import de.thws.kompetenz.session.application.port.in.ICreateSessionUseCase;
-import de.thws.kompetenz.session.application.port.in.IGetSessionUseCase;
-import de.thws.kompetenz.session.application.port.in.IOpenRatingWindowUseCase;
+import de.thws.kompetenz.session.application.port.in.*;
 import de.thws.kompetenz.session.application.port.out.ISessionRepositoryPort;
 import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,7 +12,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase, IOpenRatingWindowUseCase {
+public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase, IOpenRatingWindowUseCase
+                                        , ICloseRatingWindowUseCase, ExpireRatingWindowForTestingUseCase {
 
     private final ISessionRepositoryPort sessionRepositoryPort;
 
@@ -39,6 +38,10 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
 
         if (sessionRepositoryPort.existsByMatchingRequestId(matchingRequestId)) {
             throw new IllegalStateException("A session already exists for this matching request");
+        }
+
+        if (sessionRepositoryPort.existsActiveSessionBetween(requesterUserId, receiverUserId)) {
+            throw new IllegalStateException("An active session already exists between these users");
         }
 
         SkillSession session = SkillSession.create(matchingRequestId, requesterUserId, receiverUserId);
@@ -79,4 +82,48 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
 
         return sessionRepositoryPort.save(session);
     }
+
+    @Override
+    @Transactional
+    public SkillSession closeRatingWindow(UUID sessionId){
+        if( sessionId == null ){
+            throw new IllegalArgumentException("Session ID must not be null!");
+        }
+
+        SkillSession session = sessionRepositoryPort.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session is not found!"));
+
+        session.closeRatingWindow();
+
+
+
+        return sessionRepositoryPort.save(session);
+
+    }
+
+    @Override
+    public Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId) {
+        if (matchingRequestId == null) {
+            throw new IllegalArgumentException("Matching request id must not be null");
+        }
+
+        return sessionRepositoryPort.findByMatchingRequestId(matchingRequestId);
+    }
+
+    @Override
+    @Transactional
+    public SkillSession expireRatingWindowForTesting(UUID sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session id must not be null");
+        }
+
+        SkillSession session = sessionRepositoryPort.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        session.expireRatingWindowForTesting();
+
+        return sessionRepositoryPort.save(session);
+    }
+
+
 }

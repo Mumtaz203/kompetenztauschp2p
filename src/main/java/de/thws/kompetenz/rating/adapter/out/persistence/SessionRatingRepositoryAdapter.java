@@ -9,6 +9,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +52,14 @@ public class SessionRatingRepositoryAdapter implements SessionRatingRepositoryPo
     public Optional<SessionRating> findById(UUID sessionRatingId) {
         return repository.findSessionRatingByID(sessionRatingId)
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<SessionRating> findPendingRatingsBySessionId(UUID sessionId){
+        return repository.findPendingRatingsBySessionId(sessionId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override
