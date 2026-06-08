@@ -115,5 +115,14 @@ class SessionServiceTest {
             return savedSession != null
                     && savedSession.getMatchingRequestId().equals(matchingRequestId);
         }
+
+        @Override
+        public Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId) {
+            if (savedSession != null && savedSession.getMatchingRequestId().equals(matchingRequestId)) {
+                return Optional.of(savedSession);
+            }
+
+            return Optional.empty();
+        }
     }
 }
