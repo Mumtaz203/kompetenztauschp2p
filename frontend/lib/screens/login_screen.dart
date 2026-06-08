@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/custom_gradient_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/animated_glass_logo.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool rememberMe = false;
-  bool isLoading = false;
 
   Future<void> handleLogin() async {
     final email = emailController.text.trim();
@@ -30,17 +30,15 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => isLoading = true);
-
     try {
-      final authResponse = await AuthService().login(email: email, password: password);
+      final authResponse = await ref.read(authProvider.notifier).login(email, password);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login successful!, welcome back.')),
       );
 
-      if (authResponse.role == 'ADMIN') {
+      if (authResponse?.role == 'ADMIN') {
         Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
       } else {
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
@@ -57,8 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.redAccent,
         ),
       );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -72,6 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final authState = ref.watch(authProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -207,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         CustomGradientButton(
                           text: 'Login',
-                          isLoading: isLoading,
+                          isLoading: authState.isLoading, //riverpod state for loading
                           onPressed: handleLogin,
                         ),
 

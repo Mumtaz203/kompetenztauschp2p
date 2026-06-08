@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/user_model.dart';
-import '../services/admin_service.dart';
+import '../providers/service_providers.dart';
 
-class AdminUsersScreen extends StatefulWidget {
+class AdminUsersScreen extends ConsumerStatefulWidget {
   const AdminUsersScreen({super.key});
 
   @override
-  State<AdminUsersScreen> createState() => _AdminUsersScreenState();
+  ConsumerState<AdminUsersScreen> createState() => _AdminUsersScreenState();
 }
 
-class _AdminUsersScreenState extends State<AdminUsersScreen> {
-  final AdminService adminService = AdminService();
-
+class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   List<UserModel> users = [];
   bool isLoading = true;
   String? errorMessage;
@@ -20,7 +19,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   void initState() {
     super.initState();
-    loadUsers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadUsers();
+    });
   }
 
   Future<void> loadUsers() async {
@@ -30,7 +31,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     });
 
     try {
-      final loadedUsers = await adminService.getAllUsers();
+      final loadedUsers = await ref.read(adminServiceProvider).getAllUsers();
 
       if (!mounted) return;
 
@@ -74,7 +75,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (shouldDelete != true) return;
 
     try {
-      await adminService.deleteUser(user.id);
+      await ref.read(adminServiceProvider).deleteUser(user.id);
 
       if (!mounted) return;
 
@@ -290,4 +291,3 @@ class _AdminEmptyBox extends StatelessWidget {
     );
   }
 }
-

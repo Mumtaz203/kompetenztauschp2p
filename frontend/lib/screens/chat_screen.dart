@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/message_model.dart';
-import '../services/chat_service.dart';
+import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   final String? conversationId;
   final String? currentUserId;
   final String? otherUserId;
@@ -19,11 +20,10 @@ class ChatScreen extends StatefulWidget {
   });
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final ChatService chatService = ChatService();
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
@@ -40,7 +40,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    loadConversation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadConversation();
+    });
   }
 
   Future<void> loadConversation() async {
@@ -57,6 +59,8 @@ class _ChatScreenState extends State<ChatScreen> {
       if (currentUserId.isEmpty) {
         throw Exception('Current user id is missing. Please login again.');
       }
+
+      final chatService = ref.read(chatServiceProvider);
 
       if (conversationId.isEmpty) {
         final otherUserId = widget.otherUserId ?? '';
@@ -116,7 +120,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => isSending = true);
 
     try {
-      await chatService.sendMessage(
+      await ref.read(chatServiceProvider).sendMessage(
         conversationId: conversationId,
         senderId: currentUserId,
         recipientId: recipientId,

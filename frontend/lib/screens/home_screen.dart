@@ -1,19 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import '../providers/service_providers.dart';
 import '../widgets/custom_gradient_button.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
   int _selectedIndex = 0;
 
@@ -28,6 +30,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<List<UserModel>> _fetchSuggestedUsers() async {
     try {
       final token = await AuthService.getStoredToken();
+      final myId = await AuthService.getStoredUserId();
+
+      if (myId == null) return [];
+
+      final requestService = ref.read(matchRequestServiceProvider);
+      final matches = await requestService.getMatches(myId);
+      final outgoing = await requestService.getOutgoingRequests(myId);
+      final incoming = await requestService.getIncomingRequests(myId);
+
+      Set<String> excludeIds = {myId};
+      for (var match in matches) {
+        excludeIds.add(match.senderId == myId ? match.receiverId : match.senderId);
+      }
+      for (var req in outgoing) excludeIds.add(req.receiverId);
+      for (var req in incoming) excludeIds.add(req.senderId);
 
       final response = await http.get(
         Uri.parse('${AuthService.baseUrl}/users/getAllUsers'),
@@ -47,13 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
           usersList = decodedData;
         }
 
-        final allUsers =
-        usersList.map((json) => UserModel.fromJson(json)).toList();
+        final allUsers = usersList.map((json) => UserModel.fromJson(json)).toList();
 
-        final myId = await AuthService.getStoredUserId();
-        if (myId != null) {
-          allUsers.removeWhere((user) => user.id == myId);
-        }
+        allUsers.removeWhere((user) => excludeIds.contains(user.id));
 
         allUsers.shuffle();
         return allUsers.take(3).toList();
@@ -306,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
                           return Center(
                             child: Text(
-                              'No users found.',
+                              'No new suggested matches right now.',
                               style: TextStyle(
                                 color: isDark ? Colors.white54 : Colors.black54,
                               ),

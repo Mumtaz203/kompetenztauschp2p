@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/user_model.dart';
+import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 import '../widgets/app_bottom_nav.dart';
 
-class MyProfileScreen extends StatefulWidget {
+class MyProfileScreen extends ConsumerStatefulWidget {
   const MyProfileScreen({super.key});
 
   @override
-  State<MyProfileScreen> createState() => _MyProfileScreenState();
+  ConsumerState<MyProfileScreen> createState() => _MyProfileScreenState();
 }
 
-class _MyProfileScreenState extends State<MyProfileScreen> {
+class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
   UserModel? user;
   bool isLoading = true;
   String? errorMessage;
@@ -20,7 +21,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   @override
   void initState() {
     super.initState();
-    loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadProfile();
+    });
   }
 
   Future<void> loadProfile() async {
@@ -36,7 +39,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     }
 
     try {
-      final loadedUser = await UserService().getMyProfile();
+      final loadedUser = await ref.read(userServiceProvider).getMyProfile();
 
       setState(() {
         user = loadedUser;
@@ -47,6 +50,56 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         isLoading = false;
         errorMessage = 'Could not load profile: $e';
       });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Log Out',
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to log out of your account?',
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(authServiceProvider).logout();
+      } catch (e) {
+        debugPrint('Logout error: $e');
+      }
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
     }
   }
 
@@ -148,6 +201,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             onPressed: _goHome,
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
+          actions: [
+            IconButton(
+              onPressed: _handleLogout,
+              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              tooltip: 'Log Out',
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
         body: SafeArea(child: bodyContent),
         bottomNavigationBar: AppBottomNav(

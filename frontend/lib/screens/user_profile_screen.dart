@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/user_model.dart';
+import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 
-class UserProfileScreen extends StatefulWidget {
+class UserProfileScreen extends ConsumerStatefulWidget {
   const UserProfileScreen({super.key});
 
   @override
-  State<UserProfileScreen> createState() => _UserProfileScreenState();
+  ConsumerState<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
-  final UserService userService = UserService();
-
+class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   UserModel? user;
   bool isLoading = true;
+  bool isCheckingConnection = true;
   String? errorMessage;
   bool didStartLoading = false;
+
+  bool isMatched = false;
+  bool hasSentRequest = false;
+  bool hasIncomingRequest = false;
 
   @override
   void didChangeDependencies() {
@@ -55,7 +59,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     });
 
     try {
-      final loadedUser = await userService.getUserProfileById(
+      final loadedUser = await ref.read(userServiceProvider).getUserProfileById(
         userId: otherUserId,
       );
 
@@ -64,6 +68,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         user = loadedUser;
         isLoading = false;
       });
+      _checkConnectionStatus(otherUserId);
     } catch (e) {
       if (!mounted) return;
 
@@ -83,7 +88,87 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         isLoading = false;
         errorMessage = null;
       });
+      _checkConnectionStatus(otherUserId);
     }
+  }
+
+  Future<void> _checkConnectionStatus(String otherId) async {
+    try {
+      final currentUserId = await AuthService.getStoredUserId();
+      if (currentUserId == null) return;
+
+      final requestService = ref.read(matchRequestServiceProvider);
+      final matches = await requestService.getMatches(currentUserId);
+      final outgoing = await requestService.getOutgoingRequests(currentUserId);
+      final incoming = await requestService.getIncomingRequests(currentUserId);
+
+      if (!mounted) return;
+      setState(() {
+        isMatched = matches.any((m) => m.senderId == otherId || m.receiverId == otherId);
+        hasSentRequest = outgoing.any((req) => req.receiverId == otherId);
+        hasIncomingRequest = incoming.any((req) => req.senderId == otherId);
+        isCheckingConnection = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => isCheckingConnection = false);
+    }
+  }
+
+  Future<void> _sendMatchRequest() async {
+    if (user == null) return;
+    try {
+      final currentUserId = await AuthService.getStoredUserId();
+      if (currentUserId == null) throw Exception("User not logged in");
+
+      setState(() {
+        hasSentRequest = true;
+      });
+
+      await ref.read(matchRequestServiceProvider).sendRequest(currentUserId, user!.id);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Match request sent successfully!'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        hasSentRequest = false;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _openChat() {
+    AuthService.getStoredUserId().then((currentUserId) {
+      if (!mounted) return;
+      if (currentUserId == null ||
+          currentUserId.isEmpty ||
+          user!.id.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat cannot be opened.')),
+        );
+        return;
+      }
+
+      Navigator.pushNamed(
+        context,
+        '/chat',
+        arguments: {
+          'currentUserId': currentUserId,
+          'otherUserId': user!.id,
+          'otherUserName': user!.username,
+        },
+      );
+    });
   }
 
   void _goHome() {
@@ -93,10 +178,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final routeArgs = ModalRoute.of(context)?.settings.arguments;
-    final args = routeArgs is Map ? routeArgs : const {};
-    final otherUserId = args['userId']?.toString() ?? '';
 
     Widget body;
 
@@ -120,33 +201,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _UserHeader(
             user: user!,
             isDark: isDark,
-            onMessagePressed: () {
-              AuthService.getStoredUserId().then((currentUserId) {
-                if (!mounted) return;
-                if (currentUserId == null ||
-                    currentUserId.isEmpty ||
-                    otherUserId.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Chat cannot be opened without a real user id.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.pushNamed(
-                  context,
-                  '/chat',
-                  arguments: {
-                    'currentUserId': currentUserId,
-                    'otherUserId': otherUserId,
-                    'otherUserName': user!.username,
-                  },
-                );
-              });
-            },
+            isCheckingConnection: isCheckingConnection,
+            isMatched: isMatched,
+            hasSentRequest: hasSentRequest,
+            hasIncomingRequest: hasIncomingRequest,
+            onMessagePressed: _openChat,
+            onSendRequestPressed: _sendMatchRequest,
           ),
           const SizedBox(height: 24),
           _SkillSection(
@@ -213,12 +273,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 class _UserHeader extends StatelessWidget {
   final UserModel user;
   final bool isDark;
+  final bool isCheckingConnection;
+  final bool isMatched;
+  final bool hasSentRequest;
+  final bool hasIncomingRequest;
   final VoidCallback onMessagePressed;
+  final VoidCallback onSendRequestPressed;
 
   const _UserHeader({
     required this.user,
     required this.isDark,
+    required this.isCheckingConnection,
+    required this.isMatched,
+    required this.hasSentRequest,
+    required this.hasIncomingRequest,
     required this.onMessagePressed,
+    required this.onSendRequestPressed,
   });
 
   @override
@@ -281,28 +351,67 @@ class _UserHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: onMessagePressed,
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue.withOpacity(0.12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'Send Message',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
+          _buildActionButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton() {
+    if (isCheckingConnection) {
+      return const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    String buttonText;
+    VoidCallback? action;
+    Color bgColor = AppColors.primaryBlue.withOpacity(0.12);
+    Color textColor = AppColors.primaryBlue;
+
+    if (isMatched) {
+      buttonText = 'Send Message';
+      action = onMessagePressed;
+    } else if (hasSentRequest) {
+      buttonText = 'Request Sent';
+      action = null;
+      bgColor = Colors.grey.withOpacity(0.2);
+      textColor = Colors.grey;
+    } else if (hasIncomingRequest) {
+      buttonText = 'Check Requests Tab';
+      action = null;
+      bgColor = Colors.grey.withOpacity(0.2);
+      textColor = Colors.grey;
+    } else {
+      buttonText = 'Send Match Request';
+      action = onSendRequestPressed;
+      bgColor = AppColors.primaryGreen.withOpacity(0.15);
+      textColor = AppColors.primaryGreen;
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton(
+        onPressed: action,
+        style: TextButton.styleFrom(
+          backgroundColor: bgColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: Text(
+          buttonText,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }
