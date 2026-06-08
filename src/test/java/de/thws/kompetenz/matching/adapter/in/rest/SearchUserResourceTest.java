@@ -2,13 +2,16 @@ package de.thws.kompetenz.matching.adapter.in.rest;
 
 import de.thws.kompetenz.matching.application.port.in.SearchUserUseCase;
 import de.thws.kompetenz.user.domain.model.User;
+import de.thws.kompetenz.matching.application.port.out.EmbeddingClientPort;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.UUID;
 
+import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,28 +19,32 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = "USER")
 class SearchUserResourceTest {
 
     @InjectMock
     SearchUserUseCase searchUserUseCase;
 
+    @InjectMock
+    EmbeddingClientPort embeddingClientPort;
+
     @Test
     void search_returns400_whenNoSearchTermsProvided() {
 
-        given()
+        assertStatus(400, () -> given()
                 .when().get("/users/search")
                 .then()
-                .statusCode(400);
+                .statusCode(400));
 
     }
 
     @Test
     void search_returns400_whenTermIsTooShort() {
-        given().queryParam("skills", "js")
+        assertStatus(400, () -> given().queryParam("skills", "js")
                 .when()
                 .get("/users/search")
                 .then()
-                .statusCode(400);
+                .statusCode(400));
 
     }
 
@@ -45,10 +52,10 @@ class SearchUserResourceTest {
     void search_returns400_whenSkillsParameterIsBlank() {
 
 
-        given()
+        assertStatus(400, () -> given()
                 .when().get("/users/search")
                 .then()
-                .statusCode(400);
+                .statusCode(400));
 
     }
 

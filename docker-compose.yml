@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -29,6 +27,9 @@ services:
       QUARKUS_CONSOLE_ENABLED: "false"
       QUARKUS_DATASOURCE_DEVSERVICES_ENABLED: "false"
       QUARKUS_FLYWAY_MIGRATE_AT_START: "true"
+      EMBEDDING_ENABLED: ${EMBEDDING_ENABLED:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      EMBEDDING_BACKFILL_ENABLED: "true"
 
     ports:
       - "8081:8080"

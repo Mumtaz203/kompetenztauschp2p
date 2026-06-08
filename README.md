@@ -65,6 +65,13 @@ PostgreSQL (Docker)
 
 ## Important Notes
 
+### Optional Embeddings
+
+- The app works without a Gemini API key.
+- Embedding generation is disabled by default with `embedding.enabled=false`.
+- To test embeddings locally, set `EMBEDDING_ENABLED=true` and `GEMINI_API_KEY` in your shell before starting the backend or Docker Compose.
+- Do not put real API keys in `application.properties`, `docker-compose.yml`, docs, or commits.
+
 ### Database
 
 - Each developer runs their **own local database**
@@ -83,17 +90,13 @@ Used for **production-like testing and validation** before creating a merge requ
 
 
 
-### Step 1 – Build backend
-
-```bash
-./mvnw clean package
-```
-
-### Step 2 – Start full system
+### Step 1 – Start full system
 
 ```bash
 docker compose up --build
 ```
+
+The Dockerfile builds the Quarkus package inside Docker, so changes in `src/main/resources/application.properties` are included by `docker compose up --build`.
 
 Backend runs on:
 
