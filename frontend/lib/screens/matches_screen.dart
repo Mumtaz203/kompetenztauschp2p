@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
 import '../models/match_request_model.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
-import '../services/match_request_service.dart';
+import '../providers/service_providers.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../core/app_colors.dart';
 
-class MatchesScreen extends StatefulWidget {
+class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
 
   @override
-  State<MatchesScreen> createState() => _MatchesScreenState();
+  ConsumerState<MatchesScreen> createState() => _MatchesScreenState();
 }
 
-class _MatchesScreenState extends State<MatchesScreen> {
-  final MatchRequestService matchRequestService = MatchRequestService();
-  final UserService userService = UserService();
-
+class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   bool isLoading = true;
   String? errorMessage;
   String currentUserId = '';
@@ -28,7 +25,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
   @override
   void initState() {
     super.initState();
-    loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadData();
+    });
   }
 
   Future<void> loadData() async {
@@ -43,6 +42,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
         throw Exception('User ID not found. Please log in again.');
       }
       currentUserId = userId;
+
+      final matchRequestService = ref.read(matchRequestServiceProvider);
+      final userService = ref.read(userServiceProvider);
 
       final incomingRequests = await matchRequestService.getIncomingRequests(currentUserId);
       final acceptedMatches = await matchRequestService.getMatches(currentUserId);
@@ -102,7 +104,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Future<void> _handleAccept(String requestId) async {
     try {
-      await matchRequestService.acceptRequest(requestId, currentUserId);
+      await ref.read(matchRequestServiceProvider).acceptRequest(requestId, currentUserId);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request Accepted!'), backgroundColor: AppColors.primaryGreen),
       );
@@ -116,7 +118,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Future<void> _handleReject(String requestId) async {
     try {
-      await matchRequestService.rejectRequest(requestId, currentUserId);
+      await ref.read(matchRequestServiceProvider).rejectRequest(requestId, currentUserId);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request Rejected.')),
       );

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
-import '../services/matching_service.dart';
-import '../services/match_request_service.dart';
+import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 import '../core/app_colors.dart';
 
-class SearchResultsScreen extends StatefulWidget {
+class SearchResultsScreen extends ConsumerStatefulWidget {
   final String skillQuery;
 
   const SearchResultsScreen({super.key, required this.skillQuery});
 
   @override
-  State<SearchResultsScreen> createState() => _SearchResultsScreenState();
+  ConsumerState<SearchResultsScreen> createState() => _SearchResultsScreenState();
 }
 
-class _SearchResultsScreenState extends State<SearchResultsScreen> {
+class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   late Future<List<UserModel>> searchResults;
-  final MatchRequestService requestService = MatchRequestService();
 
   final Set<String> sentRequests = {};
   final Set<String> incomingRequests = {};
@@ -25,7 +24,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   @override
   void initState() {
     super.initState();
-    searchResults = MatchingService().searchUsersBySkill(widget.skillQuery);
+    searchResults = ref.read(matchingServiceProvider).searchUsersBySkill(widget.skillQuery);
     _loadUserConnections();
   }
 
@@ -33,6 +32,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     try {
       final currentUserId = await AuthService.getStoredUserId();
       if (currentUserId != null) {
+        final requestService = ref.read(matchRequestServiceProvider);
         final outgoing = await requestService.getOutgoingRequests(currentUserId);
         final incoming = await requestService.getIncomingRequests(currentUserId);
         final matches = await requestService.getMatches(currentUserId);
@@ -66,7 +66,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         sentRequests.add(receiverId);
       });
 
-      await requestService.sendRequest(currentUserId, receiverId);
+      await ref.read(matchRequestServiceProvider).sendRequest(currentUserId, receiverId);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -215,7 +215,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           Text('Wants to learn: $wants', style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 16),
           Center(
-
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: isDisabled ? Colors.grey : AppColors.primaryBlue,

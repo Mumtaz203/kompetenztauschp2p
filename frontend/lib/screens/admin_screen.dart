@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // EKLENDİ
 import '../core/app_colors.dart';
-import '../services/admin_service.dart';
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart'; // EKLENDİ
+import '../providers/service_providers.dart'; // EKLENDİ
 
-class AdminScreen extends StatefulWidget {
+class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
 
   @override
-  State<AdminScreen> createState() => _AdminScreenState();
+  ConsumerState<AdminScreen> createState() => _AdminScreenState();
 }
 
-class _AdminScreenState extends State<AdminScreen> {
-  final AdminService adminService = AdminService();
-
+class _AdminScreenState extends ConsumerState<AdminScreen> {
   String userCount = '--';
   String messageCount = '--';
   bool isLoading = true;
@@ -20,11 +19,17 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDashboardStats();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDashboardStats();
+    });
   }
 
   Future<void> _loadDashboardStats() async {
+    if (!mounted) return;
+    setState(() => isLoading = true);
+
     try {
+      final adminService = ref.read(adminServiceProvider);
 
       final users = await adminService.getAllUsers();
       final messages = await adminService.getAllMessages();
@@ -48,7 +53,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void _handleLogout(BuildContext context) async {
-    await AuthService().logout();
+    await ref.read(authProvider.notifier).logout();
     if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
   }
@@ -180,9 +185,7 @@ class _AdminStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 1.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -197,10 +200,7 @@ class _AdminStatCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 2),
                 Text(title),
@@ -230,9 +230,7 @@ class _AdminNavigationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
@@ -252,10 +250,7 @@ class _AdminNavigationCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     Text(description),

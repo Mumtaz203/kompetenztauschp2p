@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/user_model.dart';
+import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 import '../widgets/custom_gradient_button.dart';
 import '../widgets/custom_text_field.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   UserModel? user;
 
   final usernameController = TextEditingController();
@@ -74,7 +75,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => isLoading = true);
 
     try {
-      final updatedUser = await UserService().updateMyProfile(
+      final updatedUser = await ref.read(userServiceProvider).updateMyProfile(
         userId: user!.id,
         username: username,
         offeredSkills: offeredSkills,
@@ -123,7 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Navigator.pushNamedAndRemoveUntil(
                 context,
                 '/home',
-                (route) => false,
+                    (route) => false,
               );
             },
             icon: const Icon(Icons.arrow_back),

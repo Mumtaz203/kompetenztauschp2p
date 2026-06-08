@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/message_model.dart';
-import '../services/admin_service.dart';
+import '../providers/service_providers.dart';
 
-class AdminMessagesScreen extends StatefulWidget {
+class AdminMessagesScreen extends ConsumerStatefulWidget {
   const AdminMessagesScreen({super.key});
 
   @override
-  State<AdminMessagesScreen> createState() => _AdminMessagesScreenState();
+  ConsumerState<AdminMessagesScreen> createState() => _AdminMessagesScreenState();
 }
 
-class _AdminMessagesScreenState extends State<AdminMessagesScreen> {
-  final AdminService adminService = AdminService();
-
+class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
   List<MessageModel> messages = [];
   bool isLoading = true;
   String? errorMessage;
@@ -20,7 +19,9 @@ class _AdminMessagesScreenState extends State<AdminMessagesScreen> {
   @override
   void initState() {
     super.initState();
-    loadMessages();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadMessages();
+    });
   }
 
   Future<void> loadMessages() async {
@@ -30,7 +31,7 @@ class _AdminMessagesScreenState extends State<AdminMessagesScreen> {
     });
 
     try {
-      final loadedMessages = await adminService.getAllMessages();
+      final loadedMessages = await ref.read(adminServiceProvider).getAllMessages();
       if (!mounted) return;
       setState(() {
         messages = loadedMessages;
@@ -70,7 +71,7 @@ class _AdminMessagesScreenState extends State<AdminMessagesScreen> {
     if (shouldDelete != true) return;
 
     try {
-      await adminService.deleteMessage(msg.id);
+      await ref.read(adminServiceProvider).deleteMessage(msg.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Message deleted successfully.'), backgroundColor: AppColors.primaryGreen),
@@ -245,4 +246,3 @@ class _AdminMessageCard extends StatelessWidget {
     );
   }
 }
-

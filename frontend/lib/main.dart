@@ -13,9 +13,10 @@ import 'screens/search_results_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_messages_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
