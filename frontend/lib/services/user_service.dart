@@ -28,7 +28,7 @@ class UserService {
 
   Future<UserModel> getUserProfileById({required String userId}) async {
     final response = await http.get(
-      Uri.parse('${AuthService.baseUrl}/users/$userId'),
+      Uri.parse('${AuthService.baseUrl}/users/getUser/$userId'),
       headers: await _authorizedHeaders(),
     );
 
@@ -65,7 +65,7 @@ class UserService {
     required List<String> wantedSkills,
   }) async {
     final response = await http.put(
-      Uri.parse('${AuthService.baseUrl}/users/$userId/updateUser'),
+      Uri.parse('${AuthService.baseUrl}/users/updateUser/$userId'),
       headers: await _authorizedHeaders(),
       body: jsonEncode({
         'username': username,
