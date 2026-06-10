@@ -7,5 +7,5 @@ import java.util.UUID;
 
 public interface ICreateSessionUseCase {
 
-    SkillSession createSession(UUID requesterUserId, UUID receiverUserId);
+    SkillSession createSession(UUID matchingRequestId, UUID requesterUserId, UUID receiverUserId);
 }

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record SessionResponse(
         UUID id,
+        UUID matchingRequestId,
         UUID requesterUserId,
         UUID receiverUserId,
         SessionStatus status,

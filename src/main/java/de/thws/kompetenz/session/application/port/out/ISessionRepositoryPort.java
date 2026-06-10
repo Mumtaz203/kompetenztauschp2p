@@ -12,4 +12,10 @@ public interface ISessionRepositoryPort {
     Optional<SkillSession> findById(UUID sessionId);
 
     boolean existsActiveSessionBetween(UUID requesterUserId, UUID receiverUserId);
+
+    boolean existsByMatchingRequestId(UUID matchingRequestId);
+
+    Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId);
+
+
 }

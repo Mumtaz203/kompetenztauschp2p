@@ -3,6 +3,8 @@ package de.thws.kompetenz.matching.adapter.in.rest;
 import de.thws.kompetenz.matching.adapter.in.rest.dto.SearchUserResponse;
 import de.thws.kompetenz.matching.adapter.in.rest.mapper.SearchUserMapper;
 import de.thws.kompetenz.matching.application.port.in.SearchUserUseCase;
+import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
+import de.thws.kompetenz.rating.domain.RatingSummary;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
@@ -19,10 +21,13 @@ import java.util.List;
 public class SearchUserResource {
     private final SearchUserUseCase searchUserUseCase;
     private final SearchUserMapper searchUserMapper;
+    private final IGetRatingSummaryUseCase getRatingSummaryUseCase;
 
-    public SearchUserResource(SearchUserUseCase searchUserUseCase, SearchUserMapper searchUserMapper) {
+    public SearchUserResource(SearchUserUseCase searchUserUseCase, SearchUserMapper searchUserMapper,
+                              IGetRatingSummaryUseCase getRatingSummaryUseCase) {
         this.searchUserUseCase = searchUserUseCase;
         this.searchUserMapper = searchUserMapper;
+        this.getRatingSummaryUseCase = getRatingSummaryUseCase;
     }
 
     @GET
@@ -30,7 +35,8 @@ public class SearchUserResource {
     @RolesAllowed("USER")
     public Response searchUserBySkill(
             @QueryParam("skill") String skill,
-            @QueryParam("skills") String skills) {
+            @QueryParam("skills") String skills
+    ) {
         List<String> searchTerms = SkillSearchTermsParser.parse(skill, skills);
 
         String validationError = SkillSearchTermsParser.validate(searchTerms);
@@ -41,8 +47,12 @@ public class SearchUserResource {
         }
 
         List<SearchUserResponse> response = new ArrayList<>();
+
         for (var user : searchUserUseCase.searchBySkills(searchTerms)) {
-            SearchUserResponse mapped = searchUserMapper.toSearchUserResponse(user);
+            RatingSummary ratingSummary = getRatingSummaryUseCase.getRatingSummaryForUser(user.getId());
+
+            SearchUserResponse mapped = searchUserMapper.toSearchUserResponse(user, ratingSummary);
+
             if (mapped != null) {
                 response.add(mapped);
             }
