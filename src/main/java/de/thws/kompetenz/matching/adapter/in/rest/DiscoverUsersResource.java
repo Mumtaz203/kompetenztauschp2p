@@ -1,10 +1,12 @@
 package de.thws.kompetenz.matching.adapter.in.rest;
 
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.matching.adapter.in.rest.dto.DiscoverUserResponse;
 import de.thws.kompetenz.matching.adapter.in.rest.mapper.DiscoverUserMapper;
 import de.thws.kompetenz.matching.application.service.DiscoverUsersService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -25,6 +27,8 @@ public class DiscoverUsersResource {
 
     private final DiscoverUsersService discoverUsersService;
     private final DiscoverUserMapper discoverUserMapper;
+    @Inject
+    AuthorizationGuard authorizationGuard;
 
     public DiscoverUsersResource(
             DiscoverUsersService discoverUsersService,
@@ -38,6 +42,8 @@ public class DiscoverUsersResource {
     @Path("/{userId}/discover")
     @RolesAllowed("USER")
     public Response discoverUsers(@PathParam("userId") UUID userId) {
+        authorizationGuard.requireSelfOrAdmin(userId);
+
         List<DiscoverUserResponse> response = new ArrayList<>();
         var recommendations = discoverUsersService.recommendUsers(userId);
         if (recommendations == null) {

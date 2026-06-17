@@ -108,7 +108,11 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
         return deletedUser;
     }
 
-
-
+    @Override
+    public List<User> findRandom10Users() {
+        return userPanacheRepository.findRandom10Users().stream()
+                .map(userPersistenceMapper::toDomain)
+                .toList();
+    }
 
 }

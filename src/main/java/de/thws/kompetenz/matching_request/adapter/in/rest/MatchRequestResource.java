@@ -1,5 +1,6 @@
 package de.thws.kompetenz.matching_request.adapter.in.rest;
 
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.matching_request.adapter.in.rest.dto.MatchRequestResponseDTO;
 
 import de.thws.kompetenz.matching_request.adapter.in.rest.mapper.MatchRequestRestMapper;
@@ -34,11 +35,16 @@ public class MatchRequestResource {
     @Inject
     private MatchRequestRestMapper mapper;
 
+    @Inject
+    private AuthorizationGuard authorizationGuard;
+
     @POST
     @Path("/send/senderId/{senderId}/receiverId/{receiverId}")
-    @RolesAllowed({"USER", "ADMIN"})
+    @RolesAllowed("USER")
     public Response sendMatchRequest(@PathParam("senderId") UUID senderId, @PathParam("receiverId")UUID receiverId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(senderId);
+
             MatchRequestModel model = useCase.sendRequest(senderId, receiverId);
             MatchRequestResponseDTO response = mapper.toResponseDTO(model);
             return Response.status(Response.Status.CREATED).entity(response).build();
@@ -52,6 +58,8 @@ public class MatchRequestResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getIncomingRequests(@PathParam("userId") UUID userId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(userId);
+
             List<MatchRequestModel> models = useCase.getIncomingPendingRequests(userId);
             List<MatchRequestResponseDTO> response = mapper.toResponseDTOList(models);
             return Response.ok(response).build();
@@ -64,7 +72,10 @@ public class MatchRequestResource {
     @Path("/outgoing/{userId}")
     @RolesAllowed({"USER", "ADMIN"})
     public Response getOutgoingRequests(@PathParam("userId") UUID userId) {
+
         try {
+            authorizationGuard.requireSelfOrAdmin(userId);
+
             List<MatchRequestModel> models = useCase.getOutgoingPendingRequests(userId);
             List<MatchRequestResponseDTO> response = mapper.toResponseDTOList(models);
             return Response.ok(response).build();
@@ -78,6 +89,8 @@ public class MatchRequestResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getMatches(@PathParam("userId") UUID userId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(userId);
+
             List<MatchRequestModel> models = useCase.getAcceptedMatches(userId);
             List<MatchRequestResponseDTO> response = mapper.toResponseDTOList(models);
             return Response.ok(response).build();
@@ -92,6 +105,8 @@ public class MatchRequestResource {
     public Response acceptRequest(@PathParam("requestId") UUID requestId,
                                   @PathParam("actingUserId") UUID actingUserId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(actingUserId);
+
             MatchRequestModel model = useCase.acceptRequest(requestId, actingUserId);
             MatchRequestResponseDTO response = mapper.toResponseDTO(model);
             return Response.ok(response).build();
@@ -106,6 +121,8 @@ public class MatchRequestResource {
     public Response rejectRequest(@PathParam("requestId") UUID requestId,
                                   @PathParam("actingUserId") UUID actingUserId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(actingUserId);
+
             useCase.rejectRequest(requestId, actingUserId);
             return Response.noContent().build();
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -118,6 +135,9 @@ public class MatchRequestResource {
     @RolesAllowed("ADMIN")
     public Response adminUpdateRequest(@PathParam("requestId") UUID requestId, MatchRequestResponseDTO dto) {
         try {
+            authorizationGuard.requireAdmin();
+
+
             MatchRequestModel model = new MatchRequestModel();
             model.setId(requestId);
             model.setStatus(dto.getStatus());
@@ -137,6 +157,8 @@ public class MatchRequestResource {
     @RolesAllowed("ADMIN")
     public Response adminDeleteRequest(@PathParam("requestId") UUID requestId) {
         try {
+            authorizationGuard.requireAdmin();
+
             useCase.adminDelete(requestId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {

@@ -33,7 +33,7 @@ public class SearchUserResource {
     @GET
     @Path("/search")
     @RolesAllowed("USER")
-    public Response searchUserBySkill(
+    public Response searchUserBySkill(//no need to implement a guard check i think its a basik method without userId in path and its only for searching users by skill so we can let all users access it
             @QueryParam("skill") String skill,
             @QueryParam("skills") String skills
     ) {
