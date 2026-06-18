@@ -26,6 +26,8 @@ public class UserService implements UserUseCaseI {
 
     @Override
     public User updateUser(UUID userId, User user) {
+        User existingUser = userRepository.findUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         user.setId(userId);
         // i did ask this part to ai if its okey and its said its okey because he said exactly like i thought that we update(also create)
         // the user from adapter with save method thats why its not necessery to implement any other method to the adapter (like updateUser) instead we do that in service
@@ -39,7 +41,18 @@ public class UserService implements UserUseCaseI {
         user.setUsername(normalizedUsername);
         user.setEmail(normalizedEmail);
         user.setPassword(passwordHash);
+        user.setOfferedSkills(user.getOfferedSkills() == null ? existingUser.getOfferedSkills() : user.getOfferedSkills());
+        user.setWantedSkills(user.getWantedSkills() == null ? existingUser.getWantedSkills() : user.getWantedSkills());
+        user.setProfileImageUrl(user.getProfileImageUrl() == null ? existingUser.getProfileImageUrl() : normalizeNullableText(user.getProfileImageUrl()));
+        user.setUniversity(user.getUniversity() == null ? existingUser.getUniversity() : normalizeNullableText(user.getUniversity()));
 
         return userRepository.save(user);
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

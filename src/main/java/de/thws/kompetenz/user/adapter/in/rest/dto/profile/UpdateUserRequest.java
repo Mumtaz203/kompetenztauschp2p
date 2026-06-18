@@ -12,14 +12,19 @@ public class UpdateUserRequest {
     private String username;
     private List<String> offeredSkills;
     private List<String> wantedSkills;
+    private String profileImageUrl;
+    private String university;
 
     public UpdateUserRequest() {
     }
 
-    public UpdateUserRequest(String username, List<String> offeredSkills, List<String> wantedSkills) {
+    public UpdateUserRequest(String username, List<String> offeredSkills, List<String> wantedSkills,
+                             String profileImageUrl, String university) {
         this.username = username;
         this.offeredSkills = offeredSkills;
         this.wantedSkills = wantedSkills;
+        this.profileImageUrl = profileImageUrl;
+        this.university = university;
     }
 
     public void setUsername(String username) {
@@ -34,6 +39,14 @@ public class UpdateUserRequest {
         this.wantedSkills = wantedSkills;
     }
 
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public void setUniversity(String university) {
+        this.university = university;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -44,5 +57,13 @@ public class UpdateUserRequest {
 
     public List<String> getWantedSkills() {
         return wantedSkills;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public String getUniversity() {
+        return university;
     }
 }

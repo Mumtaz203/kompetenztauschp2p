@@ -28,6 +28,8 @@ public class SearchUserMapper {
                 user.getEmail(),
                 toResponseSkills(user.getOfferedSkills()),
                 toResponseSkills(user.getWantedSkills()),
+                user.getProfileImageUrl(),
+                user.getUniversity(),
                 safeRatingSummary.averagePoints(),
                 safeRatingSummary.ratingCount()
         );

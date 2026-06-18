@@ -17,6 +17,8 @@ public class UserPersistenceMapper {
         entity.setUsername(user.getUsername());
         entity.setEmail(user.getEmail());
         entity.setPassword(user.getPassword());
+        entity.setProfileImageUrl(user.getProfileImageUrl());
+        entity.setUniversity(user.getUniversity());
         entity.setOfferedSkills(copy(user.getOfferedSkills()));
         entity.setWantedSkills(copy(user.getWantedSkills()));
 
@@ -33,6 +35,8 @@ public class UserPersistenceMapper {
                 entity.getEmail(),
                 entity.getPassword()
         );
+        user.setProfileImageUrl(entity.getProfileImageUrl());
+        user.setUniversity(entity.getUniversity());
         user.setOfferedSkills(copy(entity.getOfferedSkills()));
         user.setWantedSkills(copy(entity.getWantedSkills()));
         return user;

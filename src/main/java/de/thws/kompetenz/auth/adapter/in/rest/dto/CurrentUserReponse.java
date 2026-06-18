@@ -5,6 +5,8 @@ import java.util.UUID;
 public record CurrentUserReponse(
         UUID id,
         String username,
-        String email
+        String email,
+        String profileImageUrl,
+        String university
 ) {
 }

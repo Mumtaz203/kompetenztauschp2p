@@ -63,6 +63,12 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
         if(incomingUser.getUsername()!=null&&!incomingUser.getUsername().isBlank()){
             existingUser.setUsername(incomingUser.getUsername().trim());
         }
+        if(incomingUser.getProfileImageUrl()!=null){
+            existingUser.setProfileImageUrl(normalizeNullableText(incomingUser.getProfileImageUrl()));
+        }
+        if(incomingUser.getUniversity()!=null){
+            existingUser.setUniversity(normalizeNullableText(incomingUser.getUniversity()));
+        }
         existingUser.setOfferedSkills(normalizeSkills(incomingUser.getOfferedSkills()));
         existingUser.setWantedSkills(normalizeSkills(incomingUser.getWantedSkills()));
            User saved = userRepositoryPort.save(existingUser);
@@ -79,6 +85,22 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
 
     }
 
+    @Override
+    public User updateUniversity(UUID userId, String university) {
+        User user = userRepositoryPort.findUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found " + userId));
+        user.setUniversity(normalizeNullableText(university));
+        return userRepositoryPort.save(user);
+    }
+
+    @Override
+    public User updateProfileImageUrl(UUID userId, String profileImageUrl) {
+        User user = userRepositoryPort.findUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found " + userId));
+        user.setProfileImageUrl(normalizeNullableText(profileImageUrl));
+        return userRepositoryPort.save(user);
+    }
+
     public List<String> normalizeSkills(List<String> skills) {
         if (skills == null || skills.isEmpty()) {
             return List.of();
@@ -86,5 +108,12 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
         return skills.stream().map(s->s.trim()).filter(s->!s.isBlank()).map(s->s.toLowerCase(Locale.ROOT)).collect(java.util.stream.Collectors.collectingAndThen(
                 java.util.stream.Collectors.toCollection(LinkedHashSet::new),
                 List::copyOf));
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

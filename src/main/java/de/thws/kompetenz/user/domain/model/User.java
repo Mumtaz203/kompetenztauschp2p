@@ -11,6 +11,8 @@ public class User {
     private String password;
     private List<String> offeredSkills;
     private List<String> wantedSkills;
+    private String profileImageUrl;
+    private String university;
 
     public User() {
     }
@@ -70,5 +72,21 @@ public class User {
     }
     public void setWantedSkills(List<String> wantedSkills) {
         this.wantedSkills = wantedSkills;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getUniversity() {
+        return university;
+    }
+
+    public void setUniversity(String university) {
+        this.university = university;
     }
 }

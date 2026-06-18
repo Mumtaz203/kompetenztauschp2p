@@ -10,17 +10,22 @@ public class UserResponse {
     private String username;
     private List<String> offeredSkills;
     private List<String> wantedSkills;
+    private String profileImageUrl;
+    private String university;
 
     public UserResponse() {
     }
 
     public UserResponse(UUID id, String username, String email,
-                           List<String> offeredSkills, List<String> wantedSkills, String password) {
+                           List<String> offeredSkills, List<String> wantedSkills,
+                           String profileImageUrl, String university, String password) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.offeredSkills = offeredSkills;
         this.wantedSkills = wantedSkills;
+        this.profileImageUrl = profileImageUrl;
+        this.university = university;
         this.password = password;
     }
 
@@ -43,5 +48,7 @@ public class UserResponse {
     public List<String> getWantedSkills() {
         return wantedSkills;
     }
+    public String getProfileImageUrl() {return profileImageUrl;}
+    public String getUniversity() {return university;}
     public String getPassword() {return password;}
 }

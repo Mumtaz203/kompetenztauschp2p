@@ -97,7 +97,9 @@ class AuthResourceTest {
         CurrentUserReponse expectedResponse = new CurrentUserReponse(   // Fixed typo
                 userId,
                 "myusername",
-                "user@example.com"
+                "user@example.com",
+                null,
+                null
         );
 
         when(jwt.getSubject()).thenReturn(userId.toString());
@@ -117,4 +119,3 @@ class AuthResourceTest {
         assertEquals("secured", result);
     }
 }
-

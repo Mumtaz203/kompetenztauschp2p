@@ -20,6 +20,8 @@ class DiscoverUserMapperTest {
         UserRecommendation recommendation = new UserRecommendation(
                 userId,
                 "backend_user",
+                "https://example.com/profile.png",
+                "THWS",
                 87,
                 0.91,
                 List.of("Java", "Spring Boot"),
@@ -30,6 +32,8 @@ class DiscoverUserMapperTest {
 
         assertEquals(userId, response.getUserId());
         assertEquals("backend_user", response.getUsername());
+        assertEquals("https://example.com/profile.png", response.getProfileImageUrl());
+        assertEquals("THWS", response.getUniversity());
         assertEquals(87, response.getScore());
         assertEquals(0.91, response.getBestSimilarity(), 0.0001);
         assertEquals(List.of("Java", "Spring Boot"), response.getMatchedSkills());
