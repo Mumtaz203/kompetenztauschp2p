@@ -1,0 +1,94 @@
+-- Development-only demo data. All UUIDs and emails are deliberately reserved for demo use.
+-- The repeatable migration makes edits to this file take effect on the next Flyway run.
+
+INSERT INTO app_user (id, username, email, password)
+SELECT
+    ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+    'Demo User ' || lpad(n::text, 2, '0'),
+    'demo.user' || lpad(n::text, 2, '0') || '@example.test',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+FROM generate_series(1, 50) AS n
+ON CONFLICT DO NOTHING;
+
+WITH demo_users AS (
+    SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
+    FROM generate_series(1, 50) AS n
+), skills AS (
+    SELECT user_id, skill
+    FROM demo_users
+    CROSS JOIN LATERAL unnest(ARRAY[
+        (ARRAY['Java', 'PostgreSQL', 'German conversation', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking'])[((n - 1) % 10) + 1],
+        (ARRAY['Git', 'English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript'])[((n - 1) % 10) + 1],
+        (ARRAY['REST APIs', 'Unit testing', 'Kotlin', 'CSS', 'Machine learning basics', 'Presentation skills', 'Video editing', 'Networking basics', 'SQL', 'Agile coaching'])[((n - 1) % 10) + 1]
+    ]) AS skill
+)
+INSERT INTO user_offered_skills (user_id, skill)
+SELECT user_id, skill
+FROM skills s
+WHERE NOT EXISTS (
+    SELECT 1 FROM user_offered_skills existing
+    WHERE existing.user_id = s.user_id AND existing.skill = s.skill
+);
+
+WITH demo_users AS (
+    SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
+    FROM generate_series(1, 50) AS n
+), skills AS (
+    SELECT user_id, skill
+    FROM demo_users
+    CROSS JOIN LATERAL unnest(ARRAY[
+        (ARRAY['PostgreSQL', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking', 'Java', 'German conversation'])[((n - 1) % 10) + 1],
+        (ARRAY['English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript', 'Git'])[((n - 1) % 10) + 1]
+    ]) AS skill
+)
+INSERT INTO user_wanted_skills (user_id, skill)
+SELECT user_id, skill
+FROM skills s
+WHERE NOT EXISTS (
+    SELECT 1 FROM user_wanted_skills existing
+    WHERE existing.user_id = s.user_id AND existing.skill = s.skill
+);
+
+INSERT INTO match_requests (id, sender_id, receiver_id, status, created_at, updated_at)
+VALUES
+    ('10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'ACCEPTED', TIMESTAMP '2026-01-10 09:00:00', TIMESTAMP '2026-01-10 10:00:00'),
+    ('10000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004', 'ACCEPTED', TIMESTAMP '2026-01-15 11:00:00', TIMESTAMP '2026-01-15 11:30:00'),
+    ('10000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000006', 'ACCEPTED', TIMESTAMP '2026-02-01 14:00:00', TIMESTAMP '2026-02-01 14:15:00'),
+    ('10000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000007', '00000000-0000-4000-8000-000000000008', 'ACCEPTED', TIMESTAMP '2026-02-10 16:00:00', TIMESTAMP '2026-02-10 16:30:00'),
+    ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000010', 'PENDING', TIMESTAMP '2026-03-01 09:00:00', TIMESTAMP '2026-03-01 09:00:00')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO skill_session (id, matching_request_id, requester_user_id, receiver_user_id, status, created_at, accepted_at, completed_at, rating_window_opened_at, rating_window_ends_at)
+VALUES
+    ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'RATING_CLOSED', TIMESTAMP '2026-01-10 10:00:00', TIMESTAMP '2026-01-10 10:00:00', TIMESTAMP '2026-01-20 17:00:00', TIMESTAMP '2026-01-20 17:00:00', TIMESTAMP '2026-01-27 17:00:00'),
+    ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004', 'COMPLETED', TIMESTAMP '2026-01-15 11:30:00', TIMESTAMP '2026-01-15 11:30:00', TIMESTAMP '2026-02-03 18:00:00', NULL, NULL),
+    ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000006', 'ACTIVE', TIMESTAMP '2026-02-01 14:15:00', TIMESTAMP '2026-02-01 14:15:00', NULL, NULL, NULL),
+    ('20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000007', '00000000-0000-4000-8000-000000000008', 'RATING_OPEN', TIMESTAMP '2026-02-10 16:30:00', TIMESTAMP '2026-02-10 16:30:00', TIMESTAMP '2026-03-10 16:00:00', TIMESTAMP '2026-03-10 16:00:00', TIMESTAMP '2026-03-17 16:00:00')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO conversations (id, user1_id, user2_id, created_at, last_message_at)
+VALUES
+    ('30000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', TIMESTAMP '2026-01-10 09:15:00', TIMESTAMP '2026-01-19 18:05:00'),
+    ('30000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004', TIMESTAMP '2026-01-15 12:00:00', TIMESTAMP '2026-02-03 18:20:00'),
+    ('30000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000006', TIMESTAMP '2026-02-01 14:30:00', TIMESTAMP '2026-02-02 15:00:00'),
+    ('30000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000010', TIMESTAMP '2026-03-01 09:10:00', TIMESTAMP '2026-03-01 09:25:00')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO messages (id, conversation_id, sender_id, recipient_id, content, sent_at, is_read)
+VALUES
+    ('40000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'Hi, I would like to practise PostgreSQL joins.', TIMESTAMP '2026-01-10 09:15:00', TRUE),
+    ('40000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'Great, lets plan a short demo session.', TIMESTAMP '2026-01-19 18:05:00', TRUE),
+    ('40000000-0000-4000-8000-000000000003', '30000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000004', 'Thanks for the React walkthrough.', TIMESTAMP '2026-02-03 18:20:00', TRUE),
+    ('40000000-0000-4000-8000-000000000004', '30000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000006', 'Looking forward to our Docker session.', TIMESTAMP '2026-02-02 15:00:00', FALSE),
+    ('40000000-0000-4000-8000-000000000005', '30000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000010', 'Would you be open to an English conversation exchange?', TIMESTAMP '2026-03-01 09:25:00', FALSE)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO session_ratings (id, session_id, sender_user_id, receiver_user_id, status, points, comment, created_at, published_at)
+VALUES
+    ('50000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'PUBLISHED', 4.5, 'Clear explanations and useful examples.', TIMESTAMP '2026-01-20 17:30:00', TIMESTAMP '2026-01-27 17:01:00'),
+    ('50000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'PUBLISHED', 5.0, 'Prepared questions and a friendly exchange.', TIMESTAMP '2026-01-20 17:35:00', TIMESTAMP '2026-01-27 17:01:00'),
+    ('50000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000007', '00000000-0000-4000-8000-000000000008', 'PENDING', 4.0, 'Helpful session; waiting for the other rating.', TIMESTAMP '2026-03-10 16:30:00', NULL)
+ON CONFLICT DO NOTHING;
+
+-- Do not seed skill_embeddings: embedding_json must contain a real model vector.
+-- Use POST /internal/embeddings/backfill locally after enabling embeddings and backfill.
