@@ -1,5 +1,6 @@
 package de.thws.kompetenz.rating.adapter.in.rest;
 
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.rating.adapter.in.rest.dto.CreateSessionRatingRequest;
 import de.thws.kompetenz.rating.adapter.in.rest.dto.RatingSummaryResponce;
 import de.thws.kompetenz.rating.adapter.in.rest.dto.SessionRatingResponse;
@@ -36,12 +37,19 @@ public class SessionRatingResource {
     @Inject
     IGetRatingSummaryUseCase getRatingSummaryUseCase;
 
+    @Inject
+    AuthorizationGuard authorizationGuard;
+
     @POST
     @Path("/sender/{senderUserId}")
+    @RolesAllowed("USER")
     public Response createSessionRating(@Valid CreateSessionRatingRequest request,
                                         @PathParam("senderUserId") UUID senderUserId){
 
         try{
+
+
+            authorizationGuard.requireSelfOrAdmin(senderUserId);
 
             SessionRating createdRating = createSessionRatingUseCase.createRating(
                     request.sessionId(),
@@ -69,6 +77,7 @@ public class SessionRatingResource {
     @RolesAllowed("ADMIN")
     public Response publishRatingsForSession(@PathParam("sessionId") UUID sessionId) {
         try {
+            authorizationGuard.requireAdmin();
 
             List<SessionRatingResponse> response = publishSessionRatingsUseCase.publishRatingsForSession(sessionId)
                     .stream()
@@ -89,6 +98,8 @@ public class SessionRatingResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getRatingSummaryForUser(@PathParam("userId") UUID userId) {
         try {
+            authorizationGuard.requireSelfOrAdmin(userId);
+
             RatingSummaryResponce response = mapper.toSummaryResponse(
                     getRatingSummaryUseCase.getRatingSummaryForUser(userId)
             );

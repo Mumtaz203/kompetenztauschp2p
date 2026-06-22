@@ -4,11 +4,7 @@ import de.thws.kompetenz.user.adapter.out.persistence.entity.UserEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @ApplicationScoped
 public class UserPanacheRepository implements PanacheRepository<UserEntity> {
@@ -86,6 +82,21 @@ public class UserPanacheRepository implements PanacheRepository<UserEntity> {
     }
     public List<UserEntity> findAllUsers(){
         return findAll().list();
+    }
+
+    public List<UserEntity> findRandom10Users(){
+        List<UserEntity> allUsers = findAll().list();
+
+        if (allUsers.isEmpty()) {
+            return List.of();
+        }
+
+        if (allUsers.size() <= 10) {
+            return allUsers;
+        }
+
+        Collections.shuffle(allUsers, new Random());
+        return allUsers.subList(0, 10);
     }
 
 

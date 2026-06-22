@@ -1,5 +1,6 @@
 package de.thws.kompetenz.user.adapter.in.rest;
 
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
 import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.GetAllUsersResponse;
@@ -8,8 +9,10 @@ import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
 import de.thws.kompetenz.user.application.port.in.UserUseCaseI;
 import de.thws.kompetenz.user.application.port.out.UserRepositoryPort;
 import de.thws.kompetenz.user.domain.model.User;
+import io.quarkus.security.spi.runtime.AuthorizationController;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -27,7 +30,11 @@ public class UserResource {
     private final UserRepositoryPort userRepositoryPort;
     private final UserRestMapper userRestMapper;
     private final UserUseCaseI userUseCase;
+    @Inject
+    AuthorizationController authorizationController;
     private IGetRatingSummaryUseCase getRatingSummaryUseCase;
+    @Inject
+    private AuthorizationGuard authenticationGuard;
 
     public UserResource(UserRepositoryPort userRepositoryPort, UserRestMapper userRestMapper, UserUseCaseI userUseCase,
                         IGetRatingSummaryUseCase getRatingSummaryUseCase) {
@@ -39,7 +46,12 @@ public class UserResource {
 
     @GET
     @Path("/getAllUsers")
+    @RolesAllowed("ADMIN")
     public Response getAllUsers() {
+
+        authenticationGuard.requireAdmin();
+
+
         List<User> users = userRepositoryPort.findAllUsers();
 
         Map<UUID, RatingSummary> ratingSummaries = new HashMap<>();
@@ -55,8 +67,29 @@ public class UserResource {
     }
 
     @GET
+    @Path("/getRandom10Users")
+    @RolesAllowed("USER")
+    public Response getRandom10Users(){
+
+        List<User> users = userRepositoryPort.findRandom10Users();
+
+        Map<UUID, RatingSummary> ratingSummaries = new HashMap<>();
+        for (User user : users) {
+            RatingSummary summary = getRatingSummaryUseCase.getRatingSummaryForUser(user.getId());
+            ratingSummaries.put(user.getId(), summary);
+        }
+
+        GetAllUsersResponse response = userRestMapper.toGetAllUsersResponse(users, ratingSummaries);
+        return Response.ok(response).build();
+    }
+
+    @GET
     @Path("/getUser/{id}")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getUserById(@PathParam("id") UUID id) {
+
+
+        authenticationGuard.requireSelfOrAdmin(id);
 
         return userRepositoryPort.findUserById(id)
                 .map(user -> {
@@ -70,6 +103,7 @@ public class UserResource {
     @Path("/deleteUser/{id}")
     @RolesAllowed("ADMIN")
     public Response deleteUserById(@PathParam("id") UUID id) {
+        authenticationGuard.requireAdmin();
         User user = userUseCase.deleteUserById(id);
         UserResponse userResponse = userRestMapper.toUserResponse(user);
         return Response.ok(userResponse).build();
@@ -77,10 +111,13 @@ public class UserResource {
 
     @PUT
     @Path("/updateUser/{id}")
-    @RolesAllowed("ADMIN")
+    @RolesAllowed("ADMIN")//no need to implement with guard its sowieso just for admin
+    //I JUST CHANGED MY MIND AND ADDED ADMIN FORCE
     public Response updateUserById(@PathParam("id") UUID id, User user) {
+        authenticationGuard.requireAdmin();
         User updatedUser=userUseCase.updateUser(id, user);
         UserResponse userResponse = userRestMapper.toUserResponse(updatedUser);
         return Response.ok(userResponse).build();
+        
     }
 }

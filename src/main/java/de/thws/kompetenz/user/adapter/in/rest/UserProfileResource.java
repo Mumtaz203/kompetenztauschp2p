@@ -1,5 +1,6 @@
 package de.thws.kompetenz.user.adapter.in.rest;
 
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
 import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 
@@ -10,7 +11,9 @@ import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateSkillsRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateUserRequest;
 import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.user.domain.model.exception.UserNotFoundException;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -27,6 +30,8 @@ public class UserProfileResource {
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
 
     private final UserRestMapper userRestMapper;
+    @Inject
+    private AuthorizationGuard authorizationGuard;
 
     public UserProfileResource(UpdateUserProfileUseCase updateUserProfileUseCase, UserRestMapper userRestMapper) {
         this.updateUserProfileUseCase = updateUserProfileUseCase;
@@ -37,7 +42,9 @@ public class UserProfileResource {
 
     @PUT
     @Path("/{id}/updateName")
+    @RolesAllowed("USER")
     public Response updateName(@PathParam("id") UUID userId, @Valid UpdateNameRequest updateNameRequest) {
+            authorizationGuard.requireSelfOrAdmin(userId);
         User updated=updateUserProfileUseCase.updateName(userId,updateNameRequest.getName());
         return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
 
@@ -45,8 +52,10 @@ public class UserProfileResource {
 
     @PUT
     @Path("/{id}/updateUser")
+    @RolesAllowed("USER")
     public Response updateUser(@PathParam("id") UUID userId, @Valid UpdateUserRequest updateUserRequest) {
         try{
+            authorizationGuard.requireSelfOrAdmin(userId);
             User incoming = new User();
             incoming.setUsername(updateUserRequest.getUsername());
             incoming.setOfferedSkills(updateUserRequest.getOfferedSkills());
@@ -65,7 +74,9 @@ public class UserProfileResource {
 
     @PUT
     @Path("/{id}/updateSkills")
+    @RolesAllowed("USER")
     public Response updateSkills(@PathParam("id") UUID userId, @Valid UpdateSkillsRequest updateSkillsRequest) {
+        authorizationGuard.requireSelfOrAdmin(userId);
         User updated= updateUserProfileUseCase.updateSkills(userId,updateSkillsRequest.getOfferedSkills(),updateSkillsRequest.getWantedSkills());
         return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
     }

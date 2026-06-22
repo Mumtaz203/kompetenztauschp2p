@@ -25,6 +25,8 @@ public interface UserRepositoryPort {
 
     User deleteUserById(UUID userId);
 
+    List<User> findRandom10Users();
+
 
 
 

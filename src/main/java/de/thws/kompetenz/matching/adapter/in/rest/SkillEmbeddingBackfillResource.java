@@ -28,7 +28,7 @@ public class SkillEmbeddingBackfillResource {
         this.backfillEnabled = backfillEnabled;
     }
 
-    @POST
+    @POST//not sure if we need to implement the guard thing here
     public Response backfillEmbeddings() {
         if (!backfillEnabled) {
             return Response.status(Response.Status.FORBIDDEN)
