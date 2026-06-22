@@ -11,5 +11,7 @@ public interface UpdateUserProfileUseCase {
     User updateSkills(UUID userId, List<String> offeredSkills, List<String>wantedSkills);
     User updateName(UUID userId,String name);
     User updateUser(UUID userId,User user);
+    User updateUniversity(UUID userId, String university);
+    User updateProfileImageUrl(UUID userId, String profileImageUrl);
 
 }

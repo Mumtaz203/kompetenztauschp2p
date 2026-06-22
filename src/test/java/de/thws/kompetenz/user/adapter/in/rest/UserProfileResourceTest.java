@@ -55,7 +55,8 @@ class UserProfileResourceTest {
 
         successResponse = new UpdateProfileResponse(
                 userId, "testuser", "test@example.com",
-                List.of("Java"), List.of("Spring")
+                List.of("Java"), List.of("Spring"),
+                null, null
         );
 
         reset(updateUserProfileUseCase, userRestMapper);
@@ -69,6 +70,12 @@ class UserProfileResourceTest {
                 .thenReturn(testUser);
 
         when(updateUserProfileUseCase.updateSkills(any(UUID.class), anyList(), anyList()))
+                .thenReturn(testUser);
+
+        when(updateUserProfileUseCase.updateUniversity(any(UUID.class), nullable(String.class)))
+                .thenReturn(testUser);
+
+        when(updateUserProfileUseCase.updateProfileImageUrl(any(UUID.class), nullable(String.class)))
                 .thenReturn(testUser);
     }
 
@@ -109,7 +116,9 @@ class UserProfileResourceTest {
         UpdateUserRequest request = new UpdateUserRequest(
                 "newusername",
                 List.of("Go"),
-                List.of("Kafka")
+                List.of("Kafka"),
+                null,
+                null
         );
 
         given()
@@ -128,7 +137,9 @@ class UserProfileResourceTest {
         UpdateUserRequest request = new UpdateUserRequest(
                 " ",
                 List.of("Go"),
-                List.of("Kafka")
+                List.of("Kafka"),
+                null,
+                null
         );
 
         assertStatus(400, () -> given()
@@ -197,7 +208,9 @@ class UserProfileResourceTest {
                 "testuser",
                 "test@example.com",
                 List.of(),
-                List.of()
+                List.of(),
+                null,
+                null
         );
 
         when(updateUserProfileUseCase.updateSkills(eq(userId), eq(List.of()), eq(List.of())))
@@ -223,7 +236,9 @@ class UserProfileResourceTest {
         UpdateUserRequest request = new UpdateUserRequest(
                 "newuser",
                 List.of("Go"),
-                List.of("Kafka")
+                List.of("Kafka"),
+                null,
+                null
         );
 
         UUID unknownUserId = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -238,5 +253,39 @@ class UserProfileResourceTest {
                 .put("/users/{id}/updateUser", unknownUserId)
                 .then()
                 .statusCode(404));
+    }
+
+    @Test
+    @TestSecurity(user = "test-user", roles = "USER")
+    void updateUniversity_shouldReturn200() {
+        UpdateUniversityRequest request = new UpdateUniversityRequest("THWS");
+
+        given()
+                .contentType("application/json")
+                .body(request)
+                .when()
+                .put("/users/{id}/updateUni", userId)
+                .then()
+                .statusCode(200)
+                .body("username", equalTo("testuser"));
+
+        verify(updateUserProfileUseCase).updateUniversity(eq(userId), eq("THWS"));
+    }
+
+    @Test
+    @TestSecurity(user = "test-user", roles = "USER")
+    void updateProfileImageUrl_shouldReturn200() {
+        UpdateProfileImageUrlRequest request = new UpdateProfileImageUrlRequest("https://example.com/me.png");
+
+        given()
+                .contentType("application/json")
+                .body(request)
+                .when()
+                .put("/users/{id}/updateProfileImage", userId)
+                .then()
+                .statusCode(200)
+                .body("username", equalTo("testuser"));
+
+        verify(updateUserProfileUseCase).updateProfileImageUrl(eq(userId), eq("https://example.com/me.png"));
     }
 }

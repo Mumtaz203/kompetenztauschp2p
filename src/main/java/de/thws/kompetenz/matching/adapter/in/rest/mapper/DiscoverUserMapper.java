@@ -15,6 +15,8 @@ public class DiscoverUserMapper {
         return new DiscoverUserResponse(
                 recommendation.getUserId(),
                 recommendation.getUsername(),
+                recommendation.getProfileImageUrl(),
+                recommendation.getUniversity(),
                 recommendation.getScore(),
                 recommendation.getBestSimilarity(),
                 recommendation.getMatchedSkills(),

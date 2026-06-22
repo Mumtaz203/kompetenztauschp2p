@@ -10,17 +10,22 @@ public class UpdateProfileResponse {
     private String email;
     private List<String> offeredSkills;
     private List<String> wantedSkills;
+    private String profileImageUrl;
+    private String university;
 
     public UpdateProfileResponse() {
     }
 
     public UpdateProfileResponse(UUID id, String username, String email,
-                                 List<String> offeredSkills, List<String> wantedSkills) {
+                                 List<String> offeredSkills, List<String> wantedSkills,
+                                 String profileImageUrl, String university) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.offeredSkills = offeredSkills;
         this.wantedSkills = wantedSkills;
+        this.profileImageUrl = profileImageUrl;
+        this.university = university;
     }
 
     public UUID getId() {
@@ -41,5 +46,13 @@ public class UpdateProfileResponse {
 
     public List<String> getWantedSkills() {
         return wantedSkills;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public String getUniversity() {
+        return university;
     }
 }

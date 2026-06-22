@@ -25,6 +25,12 @@ public class UserEntity {
     @Column(nullable = false, length = 255)
     private String password;
 
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
+
+    @Column(length = 255)
+    private String university;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "user_offered_skills", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "skill", nullable = false, length = 100)
@@ -75,6 +81,22 @@ public class UserEntity {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getUniversity() {
+        return university;
+    }
+
+    public void setUniversity(String university) {
+        this.university = university;
     }
 
     public List<String> getOfferedSkills() { return offeredSkills; }

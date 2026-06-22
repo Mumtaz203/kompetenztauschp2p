@@ -88,6 +88,8 @@ public class DiscoverUsersService {
         return new UserRecommendation(
                 candidate.getId(),
                 candidate.getUsername(),
+                candidate.getProfileImageUrl(),
+                candidate.getUniversity(),
                 score.totalScore(),
                 score.bestSimilarity(),
                 score.matchedSkills(),

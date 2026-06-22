@@ -46,6 +46,8 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
         existing.setUsername(user.getUsername());
         existing.setEmail(user.getEmail());
         existing.setPassword(user.getPassword());
+        existing.setProfileImageUrl(user.getProfileImageUrl());
+        existing.setUniversity(user.getUniversity());
         existing.setOfferedSkills(user.getOfferedSkills());
         existing.setWantedSkills(user.getWantedSkills());
 

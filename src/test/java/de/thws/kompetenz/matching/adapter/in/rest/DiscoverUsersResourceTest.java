@@ -34,6 +34,8 @@ class DiscoverUsersResourceTest {
                 new UserRecommendation(
                         recommendedUserId,
                         "backend_user",
+                        null,
+                        null,
                         87,
                         0.91,
                         List.of("Java", "Spring Boot"),
@@ -90,6 +92,8 @@ class DiscoverUsersResourceTest {
                 new UserRecommendation(
                         recommendedUserId,
                         "backend_user",
+                        null,
+                        null,
                         87,
                         0.91,
                         List.of("Java"),

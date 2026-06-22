@@ -104,7 +104,9 @@ public class AuthResource {
             CurrentUserReponse response = new CurrentUserReponse(
                     UUID.fromString(adminId),
                     adminUsername,
-                    adminEmail
+                    adminEmail,
+                    null,
+                    null
             );
             return Response.ok(response).build();
         }

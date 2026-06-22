@@ -24,7 +24,9 @@ public class UserRestMapper {
                 user.getUsername(),
                 user.getEmail(),
                 user.getOfferedSkills(),
-                user.getWantedSkills()
+                user.getWantedSkills(),
+                user.getProfileImageUrl(),
+                user.getUniversity()
         );
     }
 
@@ -43,6 +45,8 @@ public class UserRestMapper {
                 user.getEmail(),
                 user.getOfferedSkills(),
                 user.getWantedSkills(),
+                user.getProfileImageUrl(),
+                user.getUniversity(),
                 safeRatingSummary.averagePoints(),
                 safeRatingSummary.ratingCount()
         );
@@ -72,6 +76,15 @@ public class UserRestMapper {
     }
     public UserResponse toUserResponse(User user) {
         if (user == null) return null;
-        return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getOfferedSkills(), user.getWantedSkills(),user.getPassword());
+        return new UserResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getOfferedSkills(),
+                user.getWantedSkills(),
+                user.getProfileImageUrl(),
+                user.getUniversity(),
+                user.getPassword()
+        );
     }
 }

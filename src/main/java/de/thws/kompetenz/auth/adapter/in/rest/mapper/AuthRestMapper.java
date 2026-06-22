@@ -51,7 +51,9 @@ public class AuthRestMapper {
         return new CurrentUserReponse(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail()
+                user.getEmail(),
+                user.getProfileImageUrl(),
+                user.getUniversity()
         );
     }
 

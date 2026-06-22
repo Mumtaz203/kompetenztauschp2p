@@ -7,7 +7,9 @@ import de.thws.kompetenz.user.application.port.in.UpdateUserProfileUseCase;
 
 import de.thws.kompetenz.matching.adapter.in.rest.dto.SearchUserResponse;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateNameRequest;
+import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateProfileImageUrlRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateSkillsRequest;
+import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateUniversityRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.profile.UpdateUserRequest;
 import de.thws.kompetenz.user.domain.model.User;
 import de.thws.kompetenz.user.domain.model.exception.UserNotFoundException;
@@ -60,6 +62,8 @@ public class UserProfileResource {
             incoming.setUsername(updateUserRequest.getUsername());
             incoming.setOfferedSkills(updateUserRequest.getOfferedSkills());
             incoming.setWantedSkills(updateUserRequest.getWantedSkills());
+            incoming.setProfileImageUrl(updateUserRequest.getProfileImageUrl());
+            incoming.setUniversity(updateUserRequest.getUniversity());
 
             User updated=updateUserProfileUseCase.updateUser(userId,incoming);
             return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
@@ -81,5 +85,22 @@ public class UserProfileResource {
         return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
     }
 
+    @PUT
+    @Path("/{id}/updateUni")
+    @RolesAllowed("USER")
+    public Response updateUniversity(@PathParam("id") UUID userId, @Valid UpdateUniversityRequest updateUniversityRequest) {
+        authorizationGuard.requireSelfOrAdmin(userId);
+        User updated = updateUserProfileUseCase.updateUniversity(userId, updateUniversityRequest.getUniversity());
+        return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
     }
 
+    @PUT
+    @Path("/{id}/updateProfileImage")
+    @RolesAllowed("USER")
+    public Response updateProfileImageUrl(@PathParam("id") UUID userId, @Valid UpdateProfileImageUrlRequest request) {
+        authorizationGuard.requireSelfOrAdmin(userId);
+        User updated = updateUserProfileUseCase.updateProfileImageUrl(userId, request.getProfileImageUrl());
+        return Response.ok(userRestMapper.toUpdateProfileResponse(updated)).build();
+    }
+
+    }
