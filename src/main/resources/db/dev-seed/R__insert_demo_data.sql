@@ -16,17 +16,17 @@ WHERE app_user.email = EXCLUDED.email
 WITH demo_users AS (
     SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
     FROM generate_series(1, 50) AS n
-), skills AS (
-    SELECT user_id, skill
+), skills(user_id, skill) AS (
+    SELECT demo_users.user_id, generated.skill
     FROM demo_users
     CROSS JOIN LATERAL unnest(ARRAY[
         (ARRAY['Java', 'PostgreSQL', 'German conversation', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking'])[((n - 1) % 10) + 1],
         (ARRAY['Git', 'English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript'])[((n - 1) % 10) + 1],
         (ARRAY['REST APIs', 'Unit testing', 'Kotlin', 'CSS', 'Machine learning basics', 'Presentation skills', 'Video editing', 'Networking basics', 'SQL', 'Agile coaching'])[((n - 1) % 10) + 1]
-    ]) AS skill
+    ]) AS generated(skill)
 )
 INSERT INTO user_offered_skills (user_id, skill)
-SELECT user_id, skill
+SELECT s.user_id, s.skill
 FROM skills s
 WHERE NOT EXISTS (
     SELECT 1 FROM user_offered_skills existing
@@ -36,16 +36,16 @@ WHERE NOT EXISTS (
 WITH demo_users AS (
     SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
     FROM generate_series(1, 50) AS n
-), skills AS (
-    SELECT user_id, skill
+), skills(user_id, skill) AS (
+    SELECT demo_users.user_id, generated.skill
     FROM demo_users
     CROSS JOIN LATERAL unnest(ARRAY[
         (ARRAY['PostgreSQL', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking', 'Java', 'German conversation'])[((n - 1) % 10) + 1],
         (ARRAY['English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript', 'Git'])[((n - 1) % 10) + 1]
-    ]) AS skill
+    ]) AS generated(skill)
 )
 INSERT INTO user_wanted_skills (user_id, skill)
-SELECT user_id, skill
+SELECT s.user_id, s.skill
 FROM skills s
 WHERE NOT EXISTS (
     SELECT 1 FROM user_wanted_skills existing
