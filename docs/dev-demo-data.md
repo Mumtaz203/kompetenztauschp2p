@@ -6,7 +6,7 @@ Flyway always applies schema migrations from `src/main/resources/db/migration`. 
 
 ## Demo accounts and test data
 
-The seed creates 50 clearly marked accounts: `demo.user01@example.test` through `demo.user50@example.test`. All use the password `password` (development only). Each user has three offered skills and two wanted skills across Java, PostgreSQL, React, Python, Docker, UX, languages, Git, testing, SQL, and related topics.
+The seed creates 50 clearly marked accounts: `demo.user01@example.test` through `demo.user50@example.test`. All use the password `password` (development only; stored as a BCrypt hash). Each user has three offered skills and two wanted skills across Java, PostgreSQL, React, Python, Docker, UX, languages, Git, testing, SQL, and related topics.
 
 Useful manual test pairs include:
 
@@ -14,7 +14,10 @@ Useful manual test pairs include:
 - `demo.user03@example.test` / `demo.user04@example.test`: accepted request and completed session.
 - `demo.user05@example.test` / `demo.user06@example.test`: active session.
 - `demo.user07@example.test` / `demo.user08@example.test`: rating window open.
-- `demo.user09@example.test` / `demo.user10@example.test`: pending request and conversation.
+- demo.user09@example.test / demo.user10@example.test: pending request and conversation.
+- demo.user11@example.test / demo.user12@example.test: completed session with published ratings.
+- demo.user13@example.test / demo.user14@example.test: completed session with published ratings.
+- demo.user15@example.test / demo.user16@example.test: rejected request.
 
 ## Reset and reload locally
 
