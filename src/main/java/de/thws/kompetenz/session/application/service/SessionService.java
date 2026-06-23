@@ -8,12 +8,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
 public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase, IOpenRatingWindowUseCase
-                                        , ICloseRatingWindowUseCase, ExpireRatingWindowForTestingUseCase {
+                                        , ICloseRatingWindowUseCase, ExpireRatingWindowForTestingUseCase{
 
     private final ISessionRepositoryPort sessionRepositoryPort;
 
@@ -49,6 +50,10 @@ public class SessionService implements ICreateSessionUseCase, IGetSessionUseCase
         return sessionRepositoryPort.save(session);
     }
 
+    @Override
+    public List<SkillSession>  getAll(){
+        return sessionRepositoryPort.getAll();
+    }
     @Override
     public Optional<SkillSession> findById(UUID sessionId) {
         return sessionRepositoryPort.findById(sessionId);

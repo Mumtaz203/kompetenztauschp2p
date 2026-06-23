@@ -16,6 +16,20 @@ public interface SessionRatingRepositoryPort {
 
     List<SessionRating> findPendingRatingsBySessionId(UUID sessionId);
 
+    List<SessionRating> findAllRatings();
+
+    List<SessionRating> findAllPublishedRatings();
+
+    List<SessionRating> findAllNonPublishedRatings();
+
+    List<SessionRating> findOwnRatingsByUserId(UUID userId);
+
+    List<SessionRating> findPublishedRatingsByReceiverUserId(UUID receiverUserId);
+
+    List<SessionRating> findVisibleRatingsForUser(UUID userId);
+
+    List<SessionRating> findAllRatingsByReceiverUserId(UUID receiverUserId);
+
 
     BigDecimal sumPublishedPointsByReceiverUserId(UUID receiverUserId);
 

@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Path("/sessions")
@@ -60,6 +61,18 @@ public class SessionResource {
                 .build();
     }
 
+    @GET
+    @Path("/get-all-sessions")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getAllSessions(){
+
+        List<SessionResponse> respone = getSessionUseCase.getAll()
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
+
+        return Response.ok(respone).build();
+    }
     @GET
     @Path("/{sessionId}")
     @RolesAllowed({"USER", "ADMIN"})

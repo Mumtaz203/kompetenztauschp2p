@@ -6,6 +6,7 @@ import de.thws.kompetenz.session.application.port.out.ISessionRepositoryPort;
 import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +52,11 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
         existingEntity.ratingWindowEndsAt = session.getRatingWindowEndsAt();
 
         return mapper.toDomain(existingEntity);
+    }
+
+    @Override
+    public List<SkillSession> getAll(){
+        return repository.findAll().stream().map(mapper::toDomain).toList();
     }
 
     @Override

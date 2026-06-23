@@ -5,6 +5,7 @@ import de.thws.kompetenz.session.domain.SessionStatus;
 import de.thws.kompetenz.session.domain.SkillSession;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -98,6 +99,15 @@ class SessionServiceTest {
             }
 
             return Optional.empty();
+        }
+
+        @Override
+        public List<SkillSession> getAll() {
+            if (savedSession == null) {
+                return List.of();
+            }
+
+            return List.of(savedSession);
         }
 
         @Override
