@@ -1,42 +1,40 @@
 package de.thws.kompetenz.rating.adapter.in.rest;
 
-import de.thws.kompetenz.rating.adapter.in.rest.dto.SessionRatingResponse;
-import de.thws.kompetenz.rating.adapter.in.rest.mapper.SessionRatingMapper;
-import de.thws.kompetenz.rating.application.exception.SessionRatingNotFoundException;
+import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.rating.application.in.ICreateSessionRatingUseCase;
 import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
 import de.thws.kompetenz.rating.application.in.IGetUserRatingUseCase;
 import de.thws.kompetenz.rating.application.in.IPublishSessionRatingsUseCase;
+import de.thws.kompetenz.rating.application.in.IUpdateSessionRatingStatusUseCase;
 import de.thws.kompetenz.rating.domain.RatingStatus;
+import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.rating.domain.SessionRating;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
-import org.eclipse.microprofile.jwt.JsonWebToken;
-import org.junit.jupiter.api.BeforeEach;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import static de.thws.kompetenz.common.RestAssuredStatusAssert.assertStatus;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@TestSecurity(user = "test-user", roles = "USER")
 class SessionRatingResourceTest {
+
+    private static final UUID SESSION_ID = UUID.randomUUID();
+    private static final UUID RATING_ID = UUID.randomUUID();
+    private static final UUID SENDER_ID = UUID.randomUUID();
+    private static final UUID RECEIVER_ID = UUID.randomUUID();
 
     @InjectMock
     ICreateSessionRatingUseCase createSessionRatingUseCase;
-
-    @InjectMock
-    SessionRatingMapper mapper;
 
     @InjectMock
     IPublishSessionRatingsUseCase publishSessionRatingsUseCase;
@@ -48,155 +46,335 @@ class SessionRatingResourceTest {
     IGetUserRatingUseCase getUserRatingUseCase;
 
     @InjectMock
-    JsonWebToken jwt;
+    IUpdateSessionRatingStatusUseCase updateRatingStatusUseCase;
 
-    private UUID currentUserId;
+    @InjectMock
+    AuthorizationGuard authorizationGuard;
 
-    @BeforeEach
-    void setUp() {
-        currentUserId = UUID.randomUUID();
-        Mockito.when(jwt.getSubject()).thenReturn(currentUserId.toString());
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void createSessionRating_shouldUseCurrentUserAsSender() {
+        SessionRating createdRating = pendingRating();
+
+        when(authorizationGuard.currentUserId()).thenReturn(SENDER_ID);
+
+        when(createSessionRatingUseCase.createRating(
+                eq(SESSION_ID),
+                eq(SENDER_ID),
+                eq(RECEIVER_ID),
+                any(BigDecimal.class),
+                eq("Good session")
+        )).thenReturn(createdRating);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "sessionId", SESSION_ID.toString(),
+                        "receiverUserId", RECEIVER_ID.toString(),
+                        "points", 4.5,
+                        "comment", "Good session"
+                ))
+                .when()
+                .post("/ratings/create/")
+                .then()
+                .statusCode(201);
+
+        verify(authorizationGuard).currentUserId();
+
+        verify(createSessionRatingUseCase).createRating(
+                eq(SESSION_ID),
+                eq(SENDER_ID),
+                eq(RECEIVER_ID),
+                any(BigDecimal.class),
+                eq("Good session")
+        );
     }
 
     @Test
-    void getRatingsForUser_returnsPublishedRatingsForSelf() {
-        UUID ratingId = UUID.randomUUID();
-        SessionRating rating = new SessionRating(
-                ratingId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                currentUserId,
-                RatingStatus.PUBLISHED,
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void publishRatingsForSession_shouldPublishAsAdmin() {
+        SessionRating publishedRating = publishedRating();
+
+        when(publishSessionRatingsUseCase.publishRatingsForSession(SESSION_ID))
+                .thenReturn(List.of(publishedRating));
+
+        given()
+                .contentType(ContentType.JSON)
+                .when()
+                .post("/ratings/sessions/{sessionId}/publish", SESSION_ID)
+                .then()
+                .statusCode(200);
+
+        verify(publishSessionRatingsUseCase).publishRatingsForSession(SESSION_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void publishRatingsForSession_shouldBeForbiddenForNormalUser() {
+        given()
+                .contentType(ContentType.JSON)
+                .when()
+                .post("/ratings/sessions/{sessionId}/publish", SESSION_ID)
+                .then()
+                .statusCode(403);
+
+        verifyNoInteractions(publishSessionRatingsUseCase);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void getRatingSummaryForUser_shouldRequireSelfOrAdminAndReturnSummary() {
+        RatingSummary summary = new RatingSummary(BigDecimal.valueOf(4.5), 2);
+
+        doNothing().when(authorizationGuard).requireSelfOrAdmin(RECEIVER_ID);
+        when(getRatingSummaryUseCase.getRatingSummaryForUser(RECEIVER_ID))
+                .thenReturn(summary);
+
+        given()
+                .when()
+                .get("/ratings/users/{userId}/summary", RECEIVER_ID)
+                .then()
+                .statusCode(200);
+
+        verify(authorizationGuard).requireSelfOrAdmin(RECEIVER_ID);
+        verify(getRatingSummaryUseCase).getRatingSummaryForUser(RECEIVER_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getPublishedRatingsForUser_shouldBeAvailableForAdmin() {
+        when(getUserRatingUseCase.getPublishedRatingsForUser(RECEIVER_ID))
+                .thenReturn(List.of(publishedRating()));
+
+        given()
+                .when()
+                .get("/ratings/users/{userId}", RECEIVER_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getPublishedRatingsForUser(RECEIVER_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void getPublishedRatingsForUser_shouldBeForbiddenForNormalUserBecauseEndpointIsAdminOnly() {
+        given()
+                .when()
+                .get("/ratings/users/{userId}", RECEIVER_ID)
+                .then()
+                .statusCode(403);
+
+        verifyNoInteractions(getUserRatingUseCase);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void getMyRatings_shouldUseCurrentUserIdAndCallGetOwnRatings() {
+        when(authorizationGuard.currentUserId()).thenReturn(SENDER_ID);
+
+        when(getUserRatingUseCase.getOwnRatings(SENDER_ID))
+                .thenReturn(List.of(pendingRating()));
+
+        given()
+                .when()
+                .get("/ratings/me")
+                .then()
+                .statusCode(200);
+
+        verify(authorizationGuard).currentUserId();
+        verify(getUserRatingUseCase).getOwnRatings(SENDER_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void getVisibleRatingById_shouldPassCurrentUserAndAdminFlagToUseCase() {
+        when(authorizationGuard.currentUserId()).thenReturn(SENDER_ID);
+        when(authorizationGuard.isAdmin()).thenReturn(false);
+
+        when(getUserRatingUseCase.getVisibleRating(RATING_ID, SENDER_ID, false))
+                .thenReturn(pendingRating());
+
+        given()
+                .when()
+                .get("/ratings/{ratingId}", RATING_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getVisibleRating(RATING_ID, SENDER_ID, false);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getAllRatings_shouldBeAvailableForAdmin() {
+        when(getUserRatingUseCase.getAllRatings())
+                .thenReturn(List.of(pendingRating(), publishedRating()));
+
+        given()
+                .when()
+                .get("/ratings/get-all-ratings")
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getAllRatings();
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void getAllRatings_shouldBeForbiddenForNormalUser() {
+        given()
+                .when()
+                .get("/ratings/get-all-ratings")
+                .then()
+                .statusCode(403);
+
+        verifyNoInteractions(getUserRatingUseCase);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getAllPublishedRatings_shouldBeAvailableForAdmin() {
+        when(getUserRatingUseCase.getAllPublishedRatings())
+                .thenReturn(List.of(publishedRating()));
+
+        given()
+                .when()
+                .get("/ratings/admin/published-ratings")
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getAllPublishedRatings();
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getAllNonPublishedRatings_shouldBeAvailableForAdmin() {
+        when(getUserRatingUseCase.getAllNonPublishedRatings())
+                .thenReturn(List.of(pendingRating()));
+
+        given()
+                .when()
+                .get("/ratings/admin/non-published")
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getAllNonPublishedRatings();
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getAllRatingsForUser_shouldBeAvailableForAdmin() {
+        when(getUserRatingUseCase.getAllRatingsForUser(RECEIVER_ID))
+                .thenReturn(List.of(pendingRating(), publishedRating()));
+
+        given()
+                .when()
+                .get("/ratings/admin/users/{userId}", RECEIVER_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getAllRatingsForUser(RECEIVER_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getRatingByIdForAdmin_shouldReturnAnyRating() {
+        when(getUserRatingUseCase.getRating(RATING_ID))
+                .thenReturn(pendingRating());
+
+        given()
+                .when()
+                .get("/ratings/admin/{ratingId}", RATING_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getRating(RATING_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getPublishedRatingByIdForAdmin_shouldUsePublishedMethod() {
+        when(getUserRatingUseCase.getPublishedRating(RATING_ID))
+                .thenReturn(publishedRating());
+
+        given()
+                .when()
+                .get("/ratings/admin/published/{ratingId}", RATING_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getPublishedRating(RATING_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void getNonPublishedRatingByIdForAdmin_shouldUseNonPublishedMethod() {
+        when(getUserRatingUseCase.getNonPublishedRating(RATING_ID))
+                .thenReturn(pendingRating());
+
+        given()
+                .when()
+                .get("/ratings/admin/non-published/{ratingId}", RATING_ID)
+                .then()
+                .statusCode(200);
+
+        verify(getUserRatingUseCase).getNonPublishedRating(RATING_ID);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"ADMIN"})
+    void updateRatingStatus_shouldBeAvailableForAdmin() {
+        SessionRating updatedRating = publishedRating();
+
+        when(updateRatingStatusUseCase.updateRatingStatus(RATING_ID, RatingStatus.PUBLISHED))
+                .thenReturn(updatedRating);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", "PUBLISHED"))
+                .when()
+                .patch("/ratings/admin/{ratingId}/status", RATING_ID)
+                .then()
+                .statusCode(200);
+
+        verify(updateRatingStatusUseCase)
+                .updateRatingStatus(RATING_ID, RatingStatus.PUBLISHED);
+    }
+
+    @Test
+    @TestSecurity(user = "user", roles = {"USER"})
+    void updateRatingStatus_shouldBeForbiddenForNormalUser() {
+        given()
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", "PENDING"))
+                .when()
+                .patch("/ratings/admin/{ratingId}/status", RATING_ID)
+                .then()
+                .statusCode(403);
+
+        verifyNoInteractions(updateRatingStatusUseCase);
+    }
+
+    private SessionRating pendingRating() {
+        return SessionRating.create(
+                SESSION_ID,
+                SENDER_ID,
+                RECEIVER_ID,
                 BigDecimal.valueOf(4.5),
-                "Helpful exchange",
-                LocalDateTime.now().minusDays(2),
-                LocalDateTime.now().minusDays(1)
+                "Test rating"
         );
-        SessionRatingResponse response = new SessionRatingResponse(
-                ratingId,
-                rating.getSessionId(),
-                rating.getSenderUserId(),
-                rating.getReceiverUserId(),
-                rating.getStatus(),
-                rating.getPoints(),
-                rating.getComment(),
-                rating.getCreatedAt(),
-                rating.getPublishedAt()
-        );
-
-        when(getUserRatingUseCase.getPublishedRatingsForUser(currentUserId)).thenReturn(List.of(rating));
-        when(mapper.toResponse(rating)).thenReturn(response);
-
-        given()
-                .when().get("/ratings/users/{userId}", currentUserId)
-                .then()
-                .statusCode(200)
-                .body("$", hasSize(1))
-                .body("[0].id", equalTo(ratingId.toString()))
-                .body("[0].receiverUserId", equalTo(currentUserId.toString()));
     }
 
-    @Test
-    void getRatingsForUser_returns403_forOtherUser() {
-        assertStatus(403, () -> given()
-                .when().get("/ratings/users/{userId}", UUID.randomUUID())
-                .then()
-                .statusCode(403));
-    }
-
-    @Test
-    void getRatingById_returnsRatingForReceiver() {
-        UUID ratingId = UUID.randomUUID();
-        SessionRating rating = new SessionRating(
-                ratingId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                currentUserId,
-                RatingStatus.PUBLISHED,
-                BigDecimal.valueOf(5.0),
-                "Great session",
-                LocalDateTime.now().minusDays(3),
-                LocalDateTime.now().minusDays(2)
-        );
-        SessionRatingResponse response = new SessionRatingResponse(
-                ratingId,
-                rating.getSessionId(),
-                rating.getSenderUserId(),
-                rating.getReceiverUserId(),
-                rating.getStatus(),
-                rating.getPoints(),
-                rating.getComment(),
-                rating.getCreatedAt(),
-                rating.getPublishedAt()
+    private SessionRating publishedRating() {
+        SessionRating rating = SessionRating.create(
+                SESSION_ID,
+                SENDER_ID,
+                RECEIVER_ID,
+                BigDecimal.valueOf(4.5),
+                "Test rating"
         );
 
-        when(getUserRatingUseCase.getRating(ratingId)).thenReturn(rating);
-        when(mapper.toResponse(rating)).thenReturn(response);
+        rating.publish(LocalDateTime.now());
 
-        given()
-                .when().get("/ratings/{ratingId}", ratingId)
-                .then()
-                .statusCode(200)
-                .body("id", equalTo(ratingId.toString()))
-                .body("receiverUserId", equalTo(currentUserId.toString()));
-    }
-
-    @Test
-    void getRatingById_returns403_whenCurrentUserIsNotReceiver() {
-        UUID ratingId = UUID.randomUUID();
-        SessionRating rating = new SessionRating(
-                ratingId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                RatingStatus.PUBLISHED,
-                BigDecimal.valueOf(4.0),
-                "Private feedback",
-                LocalDateTime.now().minusDays(2),
-                LocalDateTime.now().minusDays(1)
-        );
-
-        when(getUserRatingUseCase.getRating(ratingId)).thenReturn(rating);
-
-        assertStatus(403, () -> given()
-                .when().get("/ratings/{ratingId}", ratingId)
-                .then()
-                .statusCode(403));
-    }
-
-    @Test
-    void getRatingById_returns404_whenMissing() {
-        UUID ratingId = UUID.randomUUID();
-
-        when(getUserRatingUseCase.getRating(ratingId))
-                .thenThrow(new SessionRatingNotFoundException(ratingId));
-
-        assertStatus(404, () -> given()
-                .when().get("/ratings/{ratingId}", ratingId)
-                .then()
-                .statusCode(404));
-    }
-
-    @Test
-    void getRatingById_returns403_forReceiverWhenRatingIsNotPublished() {
-        UUID ratingId = UUID.randomUUID();
-        SessionRating rating = new SessionRating(
-                ratingId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                currentUserId,
-                RatingStatus.PENDING,
-                BigDecimal.valueOf(4.0),
-                "Hidden until publish",
-                LocalDateTime.now().minusDays(2),
-                null
-        );
-
-        when(getUserRatingUseCase.getRating(ratingId)).thenReturn(rating);
-
-        assertStatus(403, () -> given()
-                .when().get("/ratings/{ratingId}", ratingId)
-                .then()
-                .statusCode(403));
+        return rating;
     }
 }

@@ -46,7 +46,7 @@ public class SessionRatingResource {
     IUpdateSessionRatingStatusUseCase updateRatingStatusUseCase;
 
     @POST
-    @Path("/sender/")
+    @Path("/create/")
     @RolesAllowed("USER")
     public Response createSessionRating(@Valid CreateSessionRatingRequest request){
         UUID senderUserId = authorizationGuard.currentUserId();
