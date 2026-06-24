@@ -13,17 +13,41 @@ SET password = EXCLUDED.password
 WHERE app_user.email = EXCLUDED.email
   AND app_user.email LIKE 'demo.user%@example.test';
 
-WITH demo_users AS (
+WITH skill_profiles(profile, offered, wanted, offered_variant, wanted_variant) AS (
+    VALUES
+        (1,  ARRAY['Java', 'Spring Boot', 'PostgreSQL'], ARRAY['React', 'TypeScript'], ARRAY['REST APIs'], ARRAY['Figma']),
+        (2,  ARRAY['React', 'TypeScript', 'Figma'], ARRAY['Java', 'Spring Boot'], ARRAY['CSS'], ARRAY['PostgreSQL']),
+        (3,  ARRAY['Python', 'Data analysis', 'SQL'], ARRAY['Machine learning basics', 'Statistics'], ARRAY['Excel'], ARRAY['Presentation skills']),
+        (4,  ARRAY['Docker', 'Linux', 'CI/CD'], ARRAY['Kubernetes', 'Monitoring'], ARRAY['Git'], ARRAY['Networking basics']),
+        (5,  ARRAY['Project management', 'Scrum', 'Excel'], ARRAY['Agile coaching', 'Presentation skills'], ARRAY['Public speaking'], ARRAY['Data analysis']),
+        (6,  ARRAY['UX research', 'Wireframing', 'Design systems'], ARRAY['Figma', 'React'], ARRAY['UX design'], ARRAY['CSS']),
+        (7,  ARRAY['Machine learning basics', 'Python', 'Statistics'], ARRAY['SQL', 'Data analysis'], ARRAY['Jupyter notebooks'], ARRAY['Docker']),
+        (8,  ARRAY['DevOps', 'Kubernetes', 'Monitoring'], ARRAY['Docker', 'CI/CD'], ARRAY['Linux'], ARRAY['Networking basics']),
+        (9,  ARRAY['Kotlin', 'Java', 'Unit testing'], ARRAY['Spring Boot', 'REST APIs'], ARRAY['Git'], ARRAY['PostgreSQL']),
+        (10, ARRAY['PostgreSQL', 'SQL', 'Data analysis'], ARRAY['Python', 'Excel'], ARRAY['Database design'], ARRAY['Machine learning basics']),
+        (11, ARRAY['React', 'CSS', 'UX design'], ARRAY['TypeScript', 'Figma'], ARRAY['Design systems'], ARRAY['Wireframing']),
+        (12, ARRAY['Linux', 'Networking basics', 'Docker'], ARRAY['DevOps', 'Monitoring'], ARRAY['CI/CD'], ARRAY['Kubernetes']),
+        (13, ARRAY['German conversation', 'English conversation', 'Public speaking'], ARRAY['Spanish conversation', 'Presentation skills'], ARRAY['Agile coaching'], ARRAY['Project management']),
+        (14, ARRAY['Photography', 'Video editing', 'Figma'], ARRAY['UX design', 'Design systems'], ARRAY['Wireframing'], ARRAY['React']),
+        (15, ARRAY['Cooking', 'Spanish conversation', 'Presentation skills'], ARRAY['English conversation', 'German conversation'], ARRAY['Public speaking'], ARRAY['Project management']),
+        (16, ARRAY['Spring Boot', 'REST APIs', 'Unit testing'], ARRAY['Java', 'PostgreSQL'], ARRAY['Docker'], ARRAY['CI/CD']),
+        (17, ARRAY['TypeScript', 'React', 'REST APIs'], ARRAY['CSS', 'UX research'], ARRAY['Figma'], ARRAY['Design systems']),
+        (18, ARRAY['Python', 'Machine learning basics', 'Data analysis'], ARRAY['Statistics', 'SQL'], ARRAY['Jupyter notebooks'], ARRAY['PostgreSQL']),
+        (19, ARRAY['Kubernetes', 'CI/CD', 'Docker'], ARRAY['Linux', 'DevOps'], ARRAY['Monitoring'], ARRAY['Networking basics']),
+        (20, ARRAY['Scrum', 'Agile coaching', 'Project management'], ARRAY['Excel', 'Public speaking'], ARRAY['Presentation skills'], ARRAY['Data analysis']),
+        (21, ARRAY['Figma', 'Design systems', 'UX design'], ARRAY['Wireframing', 'UX research'], ARRAY['CSS'], ARRAY['React']),
+        (22, ARRAY['Java', 'Kotlin', 'Git'], ARRAY['Unit testing', 'Spring Boot'], ARRAY['REST APIs'], ARRAY['Docker']),
+        (23, ARRAY['SQL', 'PostgreSQL', 'Database design'], ARRAY['Data analysis', 'Python'], ARRAY['Excel'], ARRAY['Machine learning basics']),
+        (24, ARRAY['Monitoring', 'Linux', 'Networking basics'], ARRAY['Kubernetes', 'CI/CD'], ARRAY['DevOps'], ARRAY['Docker']),
+        (25, ARRAY['English conversation', 'German conversation', 'Spanish conversation'], ARRAY['Public speaking', 'Presentation skills'], ARRAY['Cooking'], ARRAY['Agile coaching'])
+), demo_users AS (
     SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
     FROM generate_series(1, 50) AS n
 ), skills(user_id, skill) AS (
     SELECT demo_users.user_id, generated.skill
     FROM demo_users
-    CROSS JOIN LATERAL unnest(ARRAY[
-        (ARRAY['Java', 'PostgreSQL', 'German conversation', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking'])[((n - 1) % 10) + 1],
-        (ARRAY['Git', 'English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript'])[((n - 1) % 10) + 1],
-        (ARRAY['REST APIs', 'Unit testing', 'Kotlin', 'CSS', 'Machine learning basics', 'Presentation skills', 'Video editing', 'Networking basics', 'SQL', 'Agile coaching'])[((n - 1) % 10) + 1]
-    ]) AS generated(skill)
+    JOIN skill_profiles profile ON profile.profile = ((demo_users.n - 1) % 25) + 1
+    CROSS JOIN LATERAL unnest(profile.offered || CASE WHEN demo_users.n > 25 THEN profile.offered_variant ELSE ARRAY[]::text[] END) AS generated(skill)
 )
 INSERT INTO user_offered_skills (user_id, skill)
 SELECT s.user_id, s.skill
@@ -33,16 +57,41 @@ WHERE NOT EXISTS (
     WHERE existing.user_id = s.user_id AND existing.skill = s.skill
 );
 
-WITH demo_users AS (
+WITH skill_profiles(profile, offered, wanted, offered_variant, wanted_variant) AS (
+    VALUES
+        (1,  ARRAY['Java', 'Spring Boot', 'PostgreSQL'], ARRAY['React', 'TypeScript'], ARRAY['REST APIs'], ARRAY['Figma']),
+        (2,  ARRAY['React', 'TypeScript', 'Figma'], ARRAY['Java', 'Spring Boot'], ARRAY['CSS'], ARRAY['PostgreSQL']),
+        (3,  ARRAY['Python', 'Data analysis', 'SQL'], ARRAY['Machine learning basics', 'Statistics'], ARRAY['Excel'], ARRAY['Presentation skills']),
+        (4,  ARRAY['Docker', 'Linux', 'CI/CD'], ARRAY['Kubernetes', 'Monitoring'], ARRAY['Git'], ARRAY['Networking basics']),
+        (5,  ARRAY['Project management', 'Scrum', 'Excel'], ARRAY['Agile coaching', 'Presentation skills'], ARRAY['Public speaking'], ARRAY['Data analysis']),
+        (6,  ARRAY['UX research', 'Wireframing', 'Design systems'], ARRAY['Figma', 'React'], ARRAY['UX design'], ARRAY['CSS']),
+        (7,  ARRAY['Machine learning basics', 'Python', 'Statistics'], ARRAY['SQL', 'Data analysis'], ARRAY['Jupyter notebooks'], ARRAY['Docker']),
+        (8,  ARRAY['DevOps', 'Kubernetes', 'Monitoring'], ARRAY['Docker', 'CI/CD'], ARRAY['Linux'], ARRAY['Networking basics']),
+        (9,  ARRAY['Kotlin', 'Java', 'Unit testing'], ARRAY['Spring Boot', 'REST APIs'], ARRAY['Git'], ARRAY['PostgreSQL']),
+        (10, ARRAY['PostgreSQL', 'SQL', 'Data analysis'], ARRAY['Python', 'Excel'], ARRAY['Database design'], ARRAY['Machine learning basics']),
+        (11, ARRAY['React', 'CSS', 'UX design'], ARRAY['TypeScript', 'Figma'], ARRAY['Design systems'], ARRAY['Wireframing']),
+        (12, ARRAY['Linux', 'Networking basics', 'Docker'], ARRAY['DevOps', 'Monitoring'], ARRAY['CI/CD'], ARRAY['Kubernetes']),
+        (13, ARRAY['German conversation', 'English conversation', 'Public speaking'], ARRAY['Spanish conversation', 'Presentation skills'], ARRAY['Agile coaching'], ARRAY['Project management']),
+        (14, ARRAY['Photography', 'Video editing', 'Figma'], ARRAY['UX design', 'Design systems'], ARRAY['Wireframing'], ARRAY['React']),
+        (15, ARRAY['Cooking', 'Spanish conversation', 'Presentation skills'], ARRAY['English conversation', 'German conversation'], ARRAY['Public speaking'], ARRAY['Project management']),
+        (16, ARRAY['Spring Boot', 'REST APIs', 'Unit testing'], ARRAY['Java', 'PostgreSQL'], ARRAY['Docker'], ARRAY['CI/CD']),
+        (17, ARRAY['TypeScript', 'React', 'REST APIs'], ARRAY['CSS', 'UX research'], ARRAY['Figma'], ARRAY['Design systems']),
+        (18, ARRAY['Python', 'Machine learning basics', 'Data analysis'], ARRAY['Statistics', 'SQL'], ARRAY['Jupyter notebooks'], ARRAY['PostgreSQL']),
+        (19, ARRAY['Kubernetes', 'CI/CD', 'Docker'], ARRAY['Linux', 'DevOps'], ARRAY['Monitoring'], ARRAY['Networking basics']),
+        (20, ARRAY['Scrum', 'Agile coaching', 'Project management'], ARRAY['Excel', 'Public speaking'], ARRAY['Presentation skills'], ARRAY['Data analysis']),
+        (21, ARRAY['Figma', 'Design systems', 'UX design'], ARRAY['Wireframing', 'UX research'], ARRAY['CSS'], ARRAY['React']),
+        (22, ARRAY['Java', 'Kotlin', 'Git'], ARRAY['Unit testing', 'Spring Boot'], ARRAY['REST APIs'], ARRAY['Docker']),
+        (23, ARRAY['SQL', 'PostgreSQL', 'Database design'], ARRAY['Data analysis', 'Python'], ARRAY['Excel'], ARRAY['Machine learning basics']),
+        (24, ARRAY['Monitoring', 'Linux', 'Networking basics'], ARRAY['Kubernetes', 'CI/CD'], ARRAY['DevOps'], ARRAY['Docker']),
+        (25, ARRAY['English conversation', 'German conversation', 'Spanish conversation'], ARRAY['Public speaking', 'Presentation skills'], ARRAY['Cooking'], ARRAY['Agile coaching'])
+), demo_users AS (
     SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid AS user_id, n
     FROM generate_series(1, 50) AS n
 ), skills(user_id, skill) AS (
     SELECT demo_users.user_id, generated.skill
     FROM demo_users
-    CROSS JOIN LATERAL unnest(ARRAY[
-        (ARRAY['PostgreSQL', 'React', 'Python', 'UX design', 'Docker', 'Photography', 'Excel', 'Public speaking', 'Java', 'German conversation'])[((n - 1) % 10) + 1],
-        (ARRAY['English conversation', 'Spring Boot', 'Figma', 'Data analysis', 'Linux', 'Cooking', 'Spanish conversation', 'Project management', 'TypeScript', 'Git'])[((n - 1) % 10) + 1]
-    ]) AS generated(skill)
+    JOIN skill_profiles profile ON profile.profile = ((demo_users.n - 1) % 25) + 1
+    CROSS JOIN LATERAL unnest(profile.wanted || CASE WHEN demo_users.n > 25 THEN profile.wanted_variant ELSE ARRAY[]::text[] END) AS generated(skill)
 )
 INSERT INTO user_wanted_skills (user_id, skill)
 SELECT s.user_id, s.skill
