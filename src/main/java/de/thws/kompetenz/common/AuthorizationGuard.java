@@ -46,4 +46,8 @@ public class AuthorizationGuard {
         }
         throw new ForbiddenException("You are not allowed to access this resource.");
     }
+
+    public boolean isCurrentUser(UUID userId) {
+        return currentUserId().equals(userId);
+    }
 }

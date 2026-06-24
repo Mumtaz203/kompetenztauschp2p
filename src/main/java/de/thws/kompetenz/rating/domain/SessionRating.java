@@ -84,6 +84,16 @@ public class SessionRating {
         this.publishedAt = publishedAt == null ? LocalDateTime.now() : publishedAt;
     }
 
+    public void changeStatus(RatingStatus newStatus, LocalDateTime now) {
+        this.status = newStatus;
+
+        if (newStatus == RatingStatus.PUBLISHED) {
+            this.publishedAt = now;
+        } else {
+            this.publishedAt = null;
+        }
+    }
+
     public UUID getId() {
         return id;
     }

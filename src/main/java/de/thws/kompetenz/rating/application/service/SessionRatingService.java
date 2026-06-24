@@ -1,9 +1,10 @@
 package de.thws.kompetenz.rating.application.service;
 
-import de.thws.kompetenz.rating.application.in.ICreateSessionRatingUseCase;
-import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
-import de.thws.kompetenz.rating.application.in.IPublishSessionRatingsUseCase;
+import de.thws.kompetenz.rating.application.exception.SessionRatingNotAuthorizedException;
+import de.thws.kompetenz.rating.application.exception.SessionRatingNotFoundException;
+import de.thws.kompetenz.rating.application.in.*;
 import de.thws.kompetenz.rating.application.out.SessionRatingRepositoryPort;
+import de.thws.kompetenz.rating.domain.RatingStatus;
 import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.rating.domain.SessionRating;
 import de.thws.kompetenz.session.application.port.in.ICloseRatingWindowUseCase;
@@ -20,7 +21,7 @@ import java.util.UUID;
 @Transactional
 @ApplicationScoped
 public class SessionRatingService implements ICreateSessionRatingUseCase, IPublishSessionRatingsUseCase
-                                            , IGetRatingSummaryUseCase {
+                                            , IGetRatingSummaryUseCase, IGetUserRatingUseCase, IUpdateSessionRatingStatusUseCase {
 
     private final SessionRatingRepositoryPort sessionRatingRepositoryPort;
     private final IGetSessionUseCase getSessionUseCase;
@@ -147,5 +148,121 @@ public class SessionRatingService implements ICreateSessionRatingUseCase, IPubli
         );
 
         return new RatingSummary(average, count);
+    }
+    @Override
+    public SessionRating getRating(UUID ratingId) {
+        if (ratingId == null) {
+            throw new IllegalArgumentException("Rating id must not be null");
+        }
+
+        return sessionRatingRepositoryPort.findById(ratingId)
+                .orElseThrow(() -> new SessionRatingNotFoundException(ratingId));
+    }
+
+    @Override
+    public SessionRating getVisibleRating(UUID ratingId, UUID currentUserId, boolean isAdmin) {
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("Current user id must not be null");
+        }
+
+        SessionRating rating = getRating(ratingId);
+
+        if (isAdmin) {
+            return rating;
+        }
+        boolean isSender = rating.getSenderUserId().equals(currentUserId);
+        boolean isPublished = rating.getStatus() == RatingStatus.PUBLISHED;
+
+        if (isPublished || isSender) {
+            return rating;
+        }
+
+        throw new SessionRatingNotAuthorizedException();
+    }
+
+    @Override
+    public List<SessionRating> getVisibleRatingsForUser(UUID currentUserId) {
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("Current user id must not be null");
+        }
+
+        return sessionRatingRepositoryPort.findVisibleRatingsForUser(currentUserId);
+    }
+
+    @Override
+    public SessionRating getPublishedRating(UUID ratingId) {
+        SessionRating rating = getRating(ratingId);
+
+        if (rating.getStatus() != RatingStatus.PUBLISHED) {
+            throw new IllegalArgumentException("Rating is not published");
+        }
+
+        return rating;
+    }
+
+    @Override
+    public SessionRating getNonPublishedRating(UUID ratingId) {
+        SessionRating rating = getRating(ratingId);
+
+        if (rating.getStatus() == RatingStatus.PUBLISHED) {
+            throw new IllegalArgumentException("Rating is already published");
+        }
+
+        return rating;
+    }
+
+    @Override
+    public List<SessionRating> getAllRatings() {
+        return sessionRatingRepositoryPort.findAllRatings();
+    }
+
+    @Override
+    public List<SessionRating> getAllPublishedRatings() {
+        return sessionRatingRepositoryPort.findAllPublishedRatings();
+    }
+
+    @Override
+    public List<SessionRating> getAllNonPublishedRatings() {
+        return sessionRatingRepositoryPort.findAllNonPublishedRatings();
+    }
+
+    @Override
+    public List<SessionRating> getOwnRatings(UUID currentUserId) {
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("Current user id must not be null");
+        }
+
+        return sessionRatingRepositoryPort.findOwnRatingsByUserId(currentUserId);
+    }
+
+    @Override
+    public List<SessionRating> getPublishedRatingsForUser(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User id must not be null");
+        }
+
+        return sessionRatingRepositoryPort.findPublishedRatingsByReceiverUserId(userId);
+    }
+
+    @Override
+    public List<SessionRating> getAllRatingsForUser(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User id must not be null");
+        }
+
+        return sessionRatingRepositoryPort.findAllRatingsByReceiverUserId(userId);
+    }
+
+    @Override
+    public SessionRating updateRatingStatus(UUID ratingId, RatingStatus newStatus) {
+        if (ratingId == null || newStatus == null) {
+            throw new IllegalArgumentException("Rating id and status must not be null");
+        }
+
+        SessionRating rating = getRating(ratingId);
+
+        rating.changeStatus(newStatus, LocalDateTime.now());
+
+        return sessionRatingRepositoryPort.save(rating);
     }
 }

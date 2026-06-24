@@ -60,6 +60,60 @@ public class SessionRatingRepositoryAdapter implements SessionRatingRepositoryPo
                 .stream()
                 .map(mapper::toDomain)
                 .toList();
+    }@Override
+    public List<SessionRating> findAllRatings() {
+        return repository.findAllRatings()
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findAllPublishedRatings() {
+        return repository.findAllPublishedRatings()
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findAllNonPublishedRatings() {
+        return repository.findAllNonPublishedRatings()
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findOwnRatingsByUserId(UUID userId) {
+        return repository.findOwnRatingsByUserId(userId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findVisibleRatingsForUser(UUID userId) {
+        return repository.findVisibleRatingsForUser(userId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findAllRatingsByReceiverUserId(UUID receiverUserId){
+        return repository.findAllRatingsByReceiverUserId(receiverUserId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SessionRating> findPublishedRatingsByReceiverUserId(UUID receiverUserId) {
+        return repository.findPublishedRatingsByReceiverUserId(receiverUserId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

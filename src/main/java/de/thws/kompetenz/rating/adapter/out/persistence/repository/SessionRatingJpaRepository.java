@@ -33,6 +33,53 @@ public class SessionRatingJpaRepository implements PanacheRepositoryBase<Session
         );
     }
 
+    public List<SessionRatingEntity> findAllRatings() {
+        return list("order by createdAt desc");
+    }
+
+    public List<SessionRatingEntity> findAllPublishedRatings() {
+        return list(
+                "status = ?1 order by publishedAt desc, createdAt desc",
+                RatingStatus.PUBLISHED
+        );
+    }
+
+    public List<SessionRatingEntity> findAllNonPublishedRatings() {
+        return list(
+                "status <> ?1 order by createdAt desc",
+                RatingStatus.PUBLISHED
+        );
+    }
+
+    public List<SessionRatingEntity> findOwnRatingsByUserId(UUID userId) {
+        return list(
+                "senderUserId = ?1 or receiverUserId = ?1 order by createdAt desc",
+                userId
+        );
+    }
+
+    public List<SessionRatingEntity> findPublishedRatingsByReceiverUserId(UUID receiverUserId) {
+        return list(
+                "receiverUserId = ?1 and status = ?2 order by publishedAt desc, createdAt desc",
+                receiverUserId,
+                RatingStatus.PUBLISHED
+        );
+    }
+
+    public List<SessionRatingEntity> findAllRatingsByReceiverUserId(UUID receiverUserId) {
+        return list(
+                "receiverUserId = ?1 order by createdAt desc",
+                receiverUserId
+        );
+    }
+
+    public List<SessionRatingEntity> findVisibleRatingsForUser(UUID userId) {
+        return list(
+                "senderUserId = ?1 or (receiverUserId = ?1 and status = ?2) order by createdAt desc",
+                userId,
+                RatingStatus.PUBLISHED
+        );
+    }
     public BigDecimal sumPublishedPointsByReceiverUserId(UUID receiverUserId) {
         BigDecimal sum = getEntityManager()
                 .createQuery(
