@@ -5,6 +5,7 @@ import de.thws.kompetenz.session.domain.SessionStatus;
 import de.thws.kompetenz.session.domain.SkillSession;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -133,6 +134,35 @@ class SessionServiceTest {
             }
 
             return Optional.empty();
+        }
+
+        @Override
+        public List<SkillSession> findRatingOpenSessionsWithExpiredWindow(LocalDateTime now) {
+            if (savedSession == null
+                    || savedSession.getStatus() != SessionStatus.RATING_OPEN
+                    || savedSession.getRatingWindowEndsAt() == null
+                    || !savedSession.getRatingWindowEndsAt().isBefore(now)) {
+                return List.of();
+            }
+
+            return List.of(savedSession);
+        }
+
+        @Override
+        public List<SkillSession> findActiveSessionsAcceptedBefore(LocalDateTime cutoff) {
+            if (savedSession == null
+                    || savedSession.getStatus() != SessionStatus.ACTIVE
+                    || !savedSession.getAcceptedAt().isBefore(cutoff)
+                    && !savedSession.getAcceptedAt().isEqual(cutoff)) {
+                return List.of();
+            }
+
+            return List.of(savedSession);
+        }
+
+        @Override
+        public List<SkillSession> findCompletionPendingSessionsWithStaleResponses(LocalDateTime cutoff) {
+            return List.of();
         }
     }
 }

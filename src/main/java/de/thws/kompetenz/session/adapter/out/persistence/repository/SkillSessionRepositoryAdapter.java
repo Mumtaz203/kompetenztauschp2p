@@ -6,6 +6,7 @@ import de.thws.kompetenz.session.application.port.out.ISessionRepositoryPort;
 import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,5 +80,29 @@ public class SkillSessionRepositoryAdapter implements ISessionRepositoryPort {
     public Optional<SkillSession> findByMatchingRequestId(UUID matchingRequestId) {
         return repository.findByMatchingRequestId(matchingRequestId)
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<SkillSession> findRatingOpenSessionsWithExpiredWindow(LocalDateTime now) {
+        return repository.findRatingOpenSessionsWithExpiredWindow(now)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SkillSession> findActiveSessionsAcceptedBefore(LocalDateTime cutoff) {
+        return repository.findActiveSessionsAcceptedBefore(cutoff)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<SkillSession> findCompletionPendingSessionsWithStaleResponses(LocalDateTime cutoff) {
+        return repository.findCompletionPendingSessionsWithStaleResponses(cutoff)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

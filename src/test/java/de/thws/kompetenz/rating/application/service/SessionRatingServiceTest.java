@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -65,6 +66,8 @@ class SessionRatingServiceTest {
                 .thenReturn(false);
         when(sessionRatingRepositoryPort.save(any(SessionRating.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(sessionRatingRepositoryPort.findPendingRatingsBySessionId(SESSION_ID))
+                .thenReturn(List.of(pendingRating(SENDER_ID, RECEIVER_ID)));
 
         SessionRating result = service.createRating(
                 SESSION_ID,
@@ -81,6 +84,44 @@ class SessionRatingServiceTest {
         assertEquals(RatingStatus.PENDING, result.getStatus());
 
         verify(sessionRatingRepositoryPort).save(any(SessionRating.class));
+        verify(closeRatingWindowUseCase, never()).closeRatingWindow(any(UUID.class));
+    }
+
+    @Test
+    void createRating_shouldPublishRatingsAndCloseWindow_whenBothUsersHaveRated() {
+        SkillSession session = ratingOpenSession(LocalDateTime.now().plusDays(1));
+        SessionRating firstRating = pendingRating(RECEIVER_ID, SENDER_ID);
+        AtomicReference<SessionRating> createdRating = new AtomicReference<>();
+
+        when(getSessionUseCase.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(sessionRatingRepositoryPort.existsBySessionIdAndSenderUserId(SESSION_ID, SENDER_ID))
+                .thenReturn(false);
+        when(sessionRatingRepositoryPort.save(any(SessionRating.class)))
+                .thenAnswer(invocation -> {
+                    SessionRating rating = invocation.getArgument(0);
+                    if (rating.getSenderUserId().equals(SENDER_ID)) {
+                        createdRating.set(rating);
+                    }
+                    return rating;
+                });
+        when(sessionRatingRepositoryPort.findPendingRatingsBySessionId(SESSION_ID))
+                .thenAnswer(invocation -> List.of(firstRating, createdRating.get()));
+
+        SessionRating result = service.createRating(
+                SESSION_ID,
+                SENDER_ID,
+                RECEIVER_ID,
+                BigDecimal.valueOf(4.5),
+                "Good session"
+        );
+
+        assertEquals(RatingStatus.PUBLISHED, result.getStatus());
+        assertNotNull(result.getPublishedAt());
+        assertEquals(RatingStatus.PUBLISHED, firstRating.getStatus());
+        assertNotNull(firstRating.getPublishedAt());
+
+        verify(closeRatingWindowUseCase).closeRatingWindow(SESSION_ID);
+        verify(sessionRatingRepositoryPort, times(3)).save(any(SessionRating.class));
     }
 
     @Test

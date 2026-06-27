@@ -8,7 +8,6 @@ import de.thws.kompetenz.session.domain.SessionCompletionResponse;
 import de.thws.kompetenz.session.domain.SessionStatus;
 import de.thws.kompetenz.session.domain.SkillSession;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDateTime;
@@ -20,12 +19,17 @@ import java.util.UUID;
 public class SessionCompletionService implements ISubmitSessionCompletionResponseUseCase {
     private static final int RATING_WINDOW_DAYS = 7;
 
-    @Inject
-    ISessionRepositoryPort sessionRepositoryPort;
+    private final ISessionRepositoryPort sessionRepositoryPort;
 
-    @Inject
-    ISessionCompletionResponseRepositoryPort sessionCompletionResponseRepositoryPort;
+    private final ISessionCompletionResponseRepositoryPort sessionCompletionResponseRepositoryPort;
 
+    public SessionCompletionService(
+            ISessionRepositoryPort sessionRepositoryPort,
+            ISessionCompletionResponseRepositoryPort sessionCompletionResponseRepositoryPort
+    ) {
+        this.sessionRepositoryPort = sessionRepositoryPort;
+        this.sessionCompletionResponseRepositoryPort = sessionCompletionResponseRepositoryPort;
+    }
 
     @Override
     @Transactional

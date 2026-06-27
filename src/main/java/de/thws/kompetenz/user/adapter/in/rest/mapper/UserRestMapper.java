@@ -48,7 +48,11 @@ public class UserRestMapper {
                 user.getProfileImageUrl(),
                 user.getUniversity(),
                 safeRatingSummary.averagePoints(),
-                safeRatingSummary.ratingCount()
+                safeRatingSummary.ratingCount(),
+                user.isInternallyFlagged(),
+                user.isInternallyFlagged()
+                        ? "This user is currently flagged for problematic behavior. Please consider this before sending a match request."
+                        : null
         );
     }
 

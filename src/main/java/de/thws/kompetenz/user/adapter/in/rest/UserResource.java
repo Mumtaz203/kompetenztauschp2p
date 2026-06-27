@@ -4,6 +4,7 @@ import de.thws.kompetenz.common.AuthorizationGuard;
 import de.thws.kompetenz.rating.application.in.IGetRatingSummaryUseCase;
 import de.thws.kompetenz.rating.domain.RatingSummary;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.GetAllUsersResponse;
+import de.thws.kompetenz.user.adapter.in.rest.dto.user.UpdateInternalFlagRequest;
 import de.thws.kompetenz.user.adapter.in.rest.dto.user.UserResponse;
 import de.thws.kompetenz.user.adapter.in.rest.mapper.UserRestMapper;
 import de.thws.kompetenz.user.application.port.in.UserUseCaseI;
@@ -13,6 +14,7 @@ import io.quarkus.security.spi.runtime.AuthorizationController;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -119,5 +121,22 @@ public class UserResource {
         UserResponse userResponse = userRestMapper.toUserResponse(updatedUser);
         return Response.ok(userResponse).build();
         
+    }
+
+    @PATCH
+    @Path("/admin/{id}/internal-flag")
+    @RolesAllowed("ADMIN")
+    public Response updateInternalFlag(
+            @PathParam("id") UUID id,
+            @Valid UpdateInternalFlagRequest request
+    ) {
+        authenticationGuard.requireAdmin();
+
+        User updatedUser = userUseCase.updateInternalFlag(id, request.internallyFlagged());
+
+        return Response.ok(userRestMapper.toGetUserResponse(
+                updatedUser,
+                getRatingSummaryUseCase.getRatingSummaryForUser(updatedUser.getId())
+        )).build();
     }
 }

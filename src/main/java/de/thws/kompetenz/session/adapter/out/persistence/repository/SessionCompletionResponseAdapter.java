@@ -28,9 +28,8 @@ public class SessionCompletionResponseAdapter implements ISessionCompletionRespo
 
         SessionCompletionResponseEntity entity = mapper.toEntity(response);
 
-        Optional<SessionCompletionResponseEntity> existingEntity = sessionCompletionJpaRepository.findByIdOptional(
-                entity.sessionId
-        );
+        Optional<SessionCompletionResponseEntity> existingEntity =
+                sessionCompletionJpaRepository.findBySessionIdAndUserId(entity.sessionId, entity.userId);
 
         if(existingEntity.isPresent()){
             SessionCompletionResponseEntity existing = existingEntity.get();

@@ -13,6 +13,8 @@ public class User {
     private List<String> wantedSkills;
     private String profileImageUrl;
     private String university;
+    private long privateReportCount;
+    private boolean internallyFlagged;
 
     public User() {
     }
@@ -88,5 +90,21 @@ public class User {
 
     public void setUniversity(String university) {
         this.university = university;
+    }
+
+    public long getPrivateReportCount() {
+        return privateReportCount;
+    }
+
+    public void setPrivateReportCount(long privateReportCount) {
+        this.privateReportCount = privateReportCount;
+    }
+
+    public boolean isInternallyFlagged() {
+        return internallyFlagged;
+    }
+
+    public void setInternallyFlagged(boolean internallyFlagged) {
+        this.internallyFlagged = internallyFlagged;
     }
 }

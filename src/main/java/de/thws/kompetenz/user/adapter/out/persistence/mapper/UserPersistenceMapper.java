@@ -21,6 +21,8 @@ public class UserPersistenceMapper {
         entity.setUniversity(user.getUniversity());
         entity.setOfferedSkills(copy(user.getOfferedSkills()));
         entity.setWantedSkills(copy(user.getWantedSkills()));
+        entity.setPrivateReportCount(user.getPrivateReportCount());
+        entity.setInternallyFlagged(user.isInternallyFlagged());
 
         return entity;
     }
@@ -39,6 +41,8 @@ public class UserPersistenceMapper {
         user.setUniversity(entity.getUniversity());
         user.setOfferedSkills(copy(entity.getOfferedSkills()));
         user.setWantedSkills(copy(entity.getWantedSkills()));
+        user.setPrivateReportCount(entity.getPrivateReportCount());
+        user.setInternallyFlagged(entity.isInternallyFlagged());
         return user;
     }
     private List<String> copy(List<String> in) {
