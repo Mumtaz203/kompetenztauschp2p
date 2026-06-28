@@ -15,6 +15,8 @@ public class GetUserResponse {
     private String university;
     private BigDecimal averagePoints;
     private long ratingCount;
+    private boolean internallyFlagged;
+    private String warningMessage;
 
     public GetUserResponse() {
     }
@@ -22,7 +24,8 @@ public class GetUserResponse {
     public GetUserResponse(UUID id, String username, String email,
                            List<String> offeredSkills, List<String> wantedSkills,
                            String profileImageUrl, String university,
-                           BigDecimal averagePoints, long ratingCount) {
+                           BigDecimal averagePoints, long ratingCount,
+                           boolean internallyFlagged, String warningMessage) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -32,6 +35,8 @@ public class GetUserResponse {
         this.university = university;
         this.averagePoints = averagePoints;
         this.ratingCount = ratingCount;
+        this.internallyFlagged = internallyFlagged;
+        this.warningMessage = warningMessage;
     }
 
     public UUID getId() {
@@ -68,5 +73,13 @@ public class GetUserResponse {
 
     public long getRatingCount() {
         return ratingCount;
+    }
+
+    public boolean isInternallyFlagged() {
+        return internallyFlagged;
+    }
+
+    public String getWarningMessage() {
+        return warningMessage;
     }
 }

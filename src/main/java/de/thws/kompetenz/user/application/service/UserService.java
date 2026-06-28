@@ -45,8 +45,20 @@ public class UserService implements UserUseCaseI {
         user.setWantedSkills(user.getWantedSkills() == null ? existingUser.getWantedSkills() : user.getWantedSkills());
         user.setProfileImageUrl(user.getProfileImageUrl() == null ? existingUser.getProfileImageUrl() : normalizeNullableText(user.getProfileImageUrl()));
         user.setUniversity(user.getUniversity() == null ? existingUser.getUniversity() : normalizeNullableText(user.getUniversity()));
+        user.setPrivateReportCount(existingUser.getPrivateReportCount());
+        user.setInternallyFlagged(existingUser.isInternallyFlagged());
 
         return userRepository.save(user);
+    }
+
+    @Override
+    public User updateInternalFlag(UUID userId, boolean internallyFlagged) {
+        User existingUser = userRepository.findUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        existingUser.setInternallyFlagged(internallyFlagged);
+
+        return userRepository.save(existingUser);
     }
 
     private String normalizeNullableText(String value) {

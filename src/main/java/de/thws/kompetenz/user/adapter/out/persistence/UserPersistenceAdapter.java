@@ -50,6 +50,8 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
         existing.setUniversity(user.getUniversity());
         existing.setOfferedSkills(user.getOfferedSkills());
         existing.setWantedSkills(user.getWantedSkills());
+        existing.setPrivateReportCount(user.getPrivateReportCount());
+        existing.setInternallyFlagged(user.isInternallyFlagged());
 
         return userPersistenceMapper.toDomain(existing);
 

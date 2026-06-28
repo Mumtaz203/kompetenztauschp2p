@@ -31,6 +31,12 @@ public class UserEntity {
     @Column(length = 255)
     private String university;
 
+    @Column(name = "private_report_count", nullable = false)
+    private long privateReportCount;
+
+    @Column(name = "internally_flagged", nullable = false)
+    private boolean internallyFlagged;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "user_offered_skills", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "skill", nullable = false, length = 100)
@@ -104,4 +110,20 @@ public class UserEntity {
 
     public List<String> getWantedSkills() { return wantedSkills; }
     public void setWantedSkills(List<String> wantedSkills) { this.wantedSkills = wantedSkills; }
+
+    public long getPrivateReportCount() {
+        return privateReportCount;
+    }
+
+    public void setPrivateReportCount(long privateReportCount) {
+        this.privateReportCount = privateReportCount;
+    }
+
+    public boolean isInternallyFlagged() {
+        return internallyFlagged;
+    }
+
+    public void setInternallyFlagged(boolean internallyFlagged) {
+        this.internallyFlagged = internallyFlagged;
+    }
 }

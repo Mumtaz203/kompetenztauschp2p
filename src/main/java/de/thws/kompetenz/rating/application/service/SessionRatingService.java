@@ -87,7 +87,9 @@ public class SessionRatingService implements ICreateSessionRatingUseCase, IPubli
                 comment
         );
 
-        return sessionRatingRepositoryPort.save(rating);
+        SessionRating savedRating = sessionRatingRepositoryPort.save(rating);
+
+        return publishRatingsIfBothUsersRated(sessionId, savedRating);
     }
     @Override
     @Transactional
@@ -125,6 +127,29 @@ public class SessionRatingService implements ICreateSessionRatingUseCase, IPubli
         closeRatingWindowUseCase.closeRatingWindow(sessionId);
 
         return publishedRatings;
+    }
+
+    private SessionRating publishRatingsIfBothUsersRated(UUID sessionId, SessionRating savedRating) {
+        List<SessionRating> pendingRatings = sessionRatingRepositoryPort.findPendingRatingsBySessionId(sessionId);
+
+        if (pendingRatings.size() < 2) {
+            return savedRating;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (SessionRating rating : pendingRatings) {
+            rating.publish(now);
+            sessionRatingRepositoryPort.save(rating);
+        }
+
+        closeRatingWindowUseCase.closeRatingWindow(sessionId);
+
+        if (savedRating.getStatus() == RatingStatus.PENDING) {
+            savedRating.publish(now);
+        }
+
+        return savedRating;
     }
 
     @Override

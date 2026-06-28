@@ -7,5 +7,6 @@ public enum SessionStatus {
     RATING_OPEN,
     RATING_CLOSED,
     CANCELLED,
-    DISPUTED
+    DISPUTED,
+    COMPLETION_CONFIRMATION_PENDING
 }

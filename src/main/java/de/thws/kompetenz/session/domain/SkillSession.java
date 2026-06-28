@@ -127,6 +127,46 @@ public class SkillSession {
         this.ratingWindowEndsAt = LocalDateTime.now().minusMinutes(1);
     }
 
+    public void markCompletionConfirmationPending(){
+        if(this.status != SessionStatus.ACTIVE && this.status != SessionStatus.COMPLETION_CONFIRMATION_PENDING){
+            throw new IllegalStateException("Completion confirmation can only be pending for active sessions");
+        }
+        this.status = SessionStatus.COMPLETION_CONFIRMATION_PENDING;
+    }
+
+    public void markStillPlanned(){
+        if(this.status != SessionStatus.ACTIVE && this.status != SessionStatus.COMPLETION_CONFIRMATION_PENDING){
+            throw new IllegalStateException("Only active or pending sessions can stay active!");
+        }
+        this.status = SessionStatus.ACTIVE;
+    }
+
+    public void cancelSession(){
+        if(this.status == SessionStatus.RATING_OPEN || this.status == SessionStatus.RATING_CLOSED){
+            throw new IllegalStateException("Session with rating activity cannot be cancelled!");
+        }
+        this.status = SessionStatus.CANCELLED;
+    }
+
+    public void markDisputed(){
+        if(this.status == SessionStatus.RATING_CLOSED || this.status == SessionStatus.RATING_OPEN){
+            throw new IllegalStateException("Session with rating activiry cannot be disputed");
+        }
+        this.status = SessionStatus.DISPUTED;
+    }
+
+    public void completeAndOpenRatingWindow(LocalDateTime completedAt,
+                                            LocalDateTime ratingWindowOpenedAt,
+                                            LocalDateTime ratingWindowEndsAt){
+
+        LocalDateTime completionTime = completedAt == null ? LocalDateTime.now() : completedAt;
+
+        this.completedAt = completionTime;
+        this.status = SessionStatus.COMPLETED;
+
+        openRatingWindow(ratingWindowOpenedAt, ratingWindowEndsAt);
+    }
+
 
     public UUID getMatchingRequestId() {
         return matchingRequestId;

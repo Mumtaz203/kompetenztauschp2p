@@ -1,5 +1,7 @@
 package de.thws.kompetenz.rating.application.exception;
 
+import jakarta.ws.rs.ext.Provider;
+
 import java.util.UUID;
 
 public class SessionRatingNotFoundException  extends RuntimeException {

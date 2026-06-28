@@ -18,6 +18,73 @@ Useful manual test pairs include:
 - demo.user11@example.test / demo.user12@example.test: completed session with published ratings.
 - demo.user13@example.test / demo.user14@example.test: completed session with published ratings.
 - demo.user15@example.test / demo.user16@example.test: rejected request.
+- `demo.user17@example.test` / `demo.user18@example.test`: active session for fast completion and rating-window testing.
+- `demo.user20@example.test`: internally flagged demo user with three private reports.
+
+## Fast rating-window flow test
+
+Use this seeded active session:
+
+```text
+sessionId: 20000000-0000-4000-8000-000000000007
+user17: 00000000-0000-4000-8000-000000000017 / demo.user17@example.test / password
+user18: 00000000-0000-4000-8000-000000000018 / demo.user18@example.test / password
+```
+
+The flow opens the rating window immediately after both users submit `COMPLETED`.
+The first rating stays `PENDING`; the second rating publishes both ratings and closes the rating window.
+
+PowerShell example:
+
+```powershell
+$base = "http://localhost:8080"
+
+$login17 = Invoke-RestMethod -Method Post "$base/auth/login" -ContentType "application/json" -Body '{"email":"demo.user17@example.test","password":"password"}'
+$login18 = Invoke-RestMethod -Method Post "$base/auth/login" -ContentType "application/json" -Body '{"email":"demo.user18@example.test","password":"password"}'
+
+$token17 = $login17.token
+$token18 = $login18.token
+$sessionId = "20000000-0000-4000-8000-000000000007"
+$user17 = "00000000-0000-4000-8000-000000000017"
+$user18 = "00000000-0000-4000-8000-000000000018"
+
+Invoke-RestMethod -Method Post "$base/sessions/$sessionId/completion-response" -Headers @{ Authorization = "Bearer $token17" } -ContentType "application/json" -Body '{"answer":"COMPLETED","reason":"Demo fast-flow test"}'
+Invoke-RestMethod -Method Post "$base/sessions/$sessionId/completion-response" -Headers @{ Authorization = "Bearer $token18" } -ContentType "application/json" -Body '{"answer":"COMPLETED","reason":"Demo fast-flow test"}'
+
+Invoke-RestMethod -Method Post "$base/ratings/create/" -Headers @{ Authorization = "Bearer $token17" } -ContentType "application/json" -Body (@{ sessionId = $sessionId; receiverUserId = $user18; points = 4.5; comment = "Great exchange." } | ConvertTo-Json)
+Invoke-RestMethod -Method Post "$base/ratings/create/" -Headers @{ Authorization = "Bearer $token18" } -ContentType "application/json" -Body (@{ sessionId = $sessionId; receiverUserId = $user17; points = 5.0; comment = "Very helpful." } | ConvertTo-Json)
+```
+
+To inspect the result as admin:
+
+```powershell
+$admin = Invoke-RestMethod -Method Post "$base/auth/login" -ContentType "application/json" -Body '{"email":"admin@kompetenz.de","password":"admin123"}'
+$adminToken = $admin.token
+
+Invoke-RestMethod -Method Get "$base/sessions/$sessionId" -Headers @{ Authorization = "Bearer $adminToken" }
+Invoke-RestMethod -Method Get "$base/ratings/get-all-ratings" -Headers @{ Authorization = "Bearer $adminToken" }
+```
+
+## Flagged-user demo data
+
+The seed includes private reports against `demo.user20@example.test`, which crosses the current flag threshold of three reports:
+
+```text
+reported user: 00000000-0000-4000-8000-000000000020
+private_report_count: 3
+internally_flagged: true
+```
+
+Admin inspection endpoints:
+
+```powershell
+$base = "http://localhost:8080"
+$admin = Invoke-RestMethod -Method Post "$base/auth/login" -ContentType "application/json" -Body '{"email":"admin@kompetenz.de","password":"admin123"}'
+$adminToken = $admin.token
+
+Invoke-RestMethod -Method Get "$base/sessions/admin/private-reports" -Headers @{ Authorization = "Bearer $adminToken" }
+Invoke-RestMethod -Method Get "$base/users/getUser/00000000-0000-4000-8000-000000000020" -Headers @{ Authorization = "Bearer $adminToken" }
+```
 
 ## Reset and reload locally
 
