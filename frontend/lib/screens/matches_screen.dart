@@ -58,7 +58,6 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           final user = await userService.getUserProfileById(userId: req.senderId);
           tempRequests.add({'request': req, 'user': user});
         } catch (e) {
-          debugPrint("Failed to load user info for sender: ${req.senderId}, Error: $e");
           final fallbackUser = UserModel(
             id: req.senderId,
             username: 'Unknown User',
@@ -78,7 +77,6 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           final session = await sessionService.getSessionByMatchRequestId(match.id);
           tempMatches.add({'request': match, 'user': user, 'session': session});
         } catch (e) {
-          debugPrint("Failed to load user info for match, Error: $e");
           final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
           final fallbackUser = UserModel(
             id: otherId,
@@ -148,18 +146,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Rate ${user.username}'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text('Rate ${user.username}', textAlign: TextAlign.center),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Select points:'),
+                  const Text('Select points:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
                       return IconButton(
                         icon: Icon(
-                          index < selectedPoints ? Icons.star : Icons.star_outline,
+                          index < selectedPoints ? Icons.star_rounded : Icons.star_outline_rounded,
                           color: Colors.amber,
+                          size: 32,
                         ),
                         onPressed: () {
                           setDialogState(() {
@@ -172,46 +173,63 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: commentController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Add a comment (optional)',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     maxLines: 3,
                   ),
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
-                  onPressed: () async {
-                    try {
-                      final request = CreateRatingRequestModel(
-                        sessionId: session.id,
-                        receiverUserId: user.id,
-                        points: selectedPoints,
-                        comment: commentController.text.isEmpty ? null : commentController.text,
-                      );
-                      await ref.read(ratingServiceProvider).createRating(request);
-                      if (!mounted) return;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Rating sent!'),
-                          backgroundColor: AppColors.primaryGreen,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
-                      );
-                    }
-                  },
-                  child: const Text('Send'),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () async {
+                          try {
+                            final request = CreateRatingRequestModel(
+                              sessionId: session.id,
+                              receiverUserId: user.id,
+                              points: selectedPoints,
+                              comment: commentController.text.isEmpty ? null : commentController.text,
+                            );
+                            await ref.read(ratingServiceProvider).createRating(request);
+                            if (!mounted) return;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Rating sent!'),
+                                backgroundColor: AppColors.primaryGreen,
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                            );
+                          }
+                        },
+                        child: const Text('Send', style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -230,7 +248,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
     }
   }
 
-  void _openChat(UserModel user) {
+  void _openChat(UserModel user, MatchRequestModel match) {
     if (user.username == 'Unknown User') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cannot chat with an unknown user.')),
@@ -244,6 +262,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         'currentUserId': currentUserId,
         'otherUserId': user.id,
         'otherUserName': user.username,
+        'matchingRequestId': match.id,
       },
     );
   }
@@ -254,11 +273,12 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Connections'),
+          title: const Text('Connections', style: TextStyle(fontWeight: FontWeight.w900)),
           centerTitle: true,
           bottom: const TabBar(
             indicatorColor: AppColors.primaryBlue,
             labelColor: AppColors.primaryBlue,
+            unselectedLabelColor: Colors.grey,
             tabs: [
               Tab(text: 'My Matches'),
               Tab(text: 'Requests'),
@@ -284,8 +304,30 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   }
 
   Widget _buildMatchesTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (matchesData.isEmpty) {
-      return const Center(child: Text("You don't have any matches yet."));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: isDark ? Colors.white24 : Colors.black12),
+            const SizedBox(height: 16),
+            Text(
+              "No matches yet",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Start connecting with people!",
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+            ),
+          ],
+        ),
+      );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -294,27 +336,88 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         final item = matchesData[index];
         final UserModel user = item['user'];
         final SessionModel? session = item['session'];
+        final MatchRequestModel match = item['request'];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(user.username, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Teaches: ${user.offeredSkills.join(", ")}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primaryBlue),
-                  onPressed: () => _openChat(user),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+                child: Text(
+                  user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.primaryBlue, fontSize: 20, fontWeight: FontWeight.w900),
                 ),
-                if (session != null && session.status == 'RATING_OPEN')
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.username,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (user.offeredSkills.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Teaches: ${user.offeredSkills.take(2).join(", ")}',
+                        style: TextStyle(
+                          color: isDark ? Colors.white54 : Colors.black54,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    if (session != null && session.status == 'RATING_OPEN') ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '⭐ Rate now',
+                          style: TextStyle(color: AppColors.primaryGreen, fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                children: [
                   IconButton(
-                    icon: const Icon(Icons.star_outline, color: AppColors.primaryGreen),
-                    onPressed: () => _showRatingDialog(session, user),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primaryBlue),
+                    onPressed: () => _openChat(user, match),
                   ),
-              ],
-            ),
+                  if (session != null && session.status == 'RATING_OPEN')
+                    IconButton(
+                      icon: const Icon(Icons.star_rounded, color: AppColors.primaryGreen),
+                      onPressed: () => _showRatingDialog(session, user),
+                    ),
+                ],
+              ),
+            ],
           ),
         );
       },
@@ -322,8 +425,30 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   }
 
   Widget _buildRequestsTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (requestsData.isEmpty) {
-      return const Center(child: Text("No incoming requests at the moment."));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: isDark ? Colors.white24 : Colors.black12),
+            const SizedBox(height: 16),
+            Text(
+              "No incoming requests",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Check back later!",
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+            ),
+          ],
+        ),
+      );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -333,51 +458,94 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         final MatchRequestModel request = item['request'];
         final UserModel user = item['user'];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const CircleAvatar(child: Icon(Icons.person)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(user.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text('Wants to learn: ${user.wantedSkills.join(", ")}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: AppColors.primaryGreen.withOpacity(0.15),
+                    child: Text(
+                      user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+                      style: const TextStyle(color: AppColors.primaryGreen, fontSize: 18, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.username,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (user.wantedSkills.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Wants to learn: ${user.wantedSkills.take(2).join(", ")}',
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                        onPressed: () => _handleReject(request.id),
-                        child: const Text('Reject'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: const Text('Decline'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
+                      onPressed: () => _handleReject(request.id),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
-                        onPressed: () => _handleAccept(request.id),
-                        child: const Text('Accept'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                      label: const Text('Accept', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
+                      onPressed: () => _handleAccept(request.id),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       },

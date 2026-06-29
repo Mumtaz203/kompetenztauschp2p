@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
-import '../models/user_model.dart';
+import '../models/user/user_model.dart';
 import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -219,6 +219,14 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           ),
           actions: [
             IconButton(
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              icon: Icon(
+                Icons.settings_outlined,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              tooltip: 'Settings',
+            ),
+            IconButton(
               onPressed: _handleLogout,
               icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
               tooltip: 'Log Out',
@@ -259,9 +267,7 @@ class _ProfileHeader extends StatelessWidget {
             ? const Color(0xFF1E293B).withOpacity(0.85)
             : Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
@@ -300,9 +306,7 @@ class _ProfileHeader extends StatelessWidget {
             user.email,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isDark
-                  ? AppColors.subtitleDarkColor
-                  : AppColors.subtitleBrightColor,
+              color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
               fontSize: 14,
               height: 1.4,
             ),
@@ -312,20 +316,14 @@ class _ProfileHeader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.account_balance_outlined,
-                  size: 16,
-                  color: AppColors.primaryGreen,
-                ),
+                const Icon(Icons.account_balance_outlined, size: 16, color: AppColors.primaryGreen),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     user.university,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isDark
-                          ? AppColors.subtitleDarkColor
-                          : AppColors.subtitleBrightColor,
+                      color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -339,18 +337,12 @@ class _ProfileHeader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.star_rounded,
-                  size: 18,
-                  color: Colors.amber,
-                ),
+                const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
                 const SizedBox(width: 5),
                 Text(
                   '${user.averagePoints.toStringAsFixed(1)} (${user.ratingCount} ratings)',
                   style: TextStyle(
-                    color: isDark
-                        ? AppColors.subtitleDarkColor
-                        : AppColors.subtitleBrightColor,
+                    color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -365,18 +357,12 @@ class _ProfileHeader extends StatelessWidget {
               onPressed: onEditPressed,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue.withOpacity(0.12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: const Text(
                 'Edit Profile',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(color: AppColors.primaryBlue, fontSize: 15, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -411,13 +397,9 @@ class _SkillSection extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF1E293B).withOpacity(0.72)
-              : Colors.white.withOpacity(0.9),
+          color: isDark ? const Color(0xFF1E293B).withOpacity(0.72) : Colors.white.withOpacity(0.9),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
+          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -443,9 +425,7 @@ class _SkillSection extends StatelessWidget {
             Text(
               'Tap to edit',
               style: TextStyle(
-                color: isDark
-                    ? AppColors.subtitleDarkColor
-                    : AppColors.subtitleBrightColor,
+                color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -455,9 +435,7 @@ class _SkillSection extends StatelessWidget {
               Text(
                 'No skills added yet.',
                 style: TextStyle(
-                  color: isDark
-                      ? AppColors.subtitleDarkColor
-                      : AppColors.subtitleBrightColor,
+                  color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
                   fontSize: 14,
                 ),
               )
@@ -465,15 +443,7 @@ class _SkillSection extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: skills
-                    .map(
-                      (skill) => _SkillChip(
-                    label: skill,
-                    color: color,
-                    isDark: isDark,
-                  ),
-                )
-                    .toList(),
+                children: skills.map((skill) => _SkillChip(label: skill, color: color, isDark: isDark)).toList(),
               ),
           ],
         ),
@@ -487,11 +457,7 @@ class _SkillChip extends StatelessWidget {
   final Color color;
   final bool isDark;
 
-  const _SkillChip({
-    required this.label,
-    required this.color,
-    required this.isDark,
-  });
+  const _SkillChip({required this.label, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -503,11 +469,7 @@ class _SkillChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
+        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -534,13 +496,9 @@ class _ProfileStateMessage extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1E293B).withOpacity(0.85)
-                : Colors.white.withOpacity(0.95),
+            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black12,
-            ),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -561,9 +519,7 @@ class _ProfileStateMessage extends StatelessWidget {
                 message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isDark
-                      ? AppColors.subtitleDarkColor
-                      : AppColors.subtitleBrightColor,
+                  color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
                   fontSize: 14,
                   height: 1.5,
                 ),

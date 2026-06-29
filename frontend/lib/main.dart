@@ -56,6 +56,7 @@ class MyApp extends StatelessWidget {
                 currentUserId: args['currentUserId']?.toString(),
                 otherUserId: args['otherUserId']?.toString(),
                 otherUserName: args['otherUserName']?.toString(),
+                matchingRequestId: args['matchingRequestId']?.toString(),
               );
             },
             '/my-profile': (context) => const MyProfileScreen(),

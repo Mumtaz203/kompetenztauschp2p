@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
 import '../models/chatting/message_model.dart';
+import '../models/session/session_model.dart';
 import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 
@@ -10,6 +11,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String? currentUserId;
   final String? otherUserId;
   final String? otherUserName;
+  final String? matchingRequestId;
 
   const ChatScreen({
     super.key,
@@ -17,6 +19,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.currentUserId,
     this.otherUserId,
     this.otherUserName,
+    this.matchingRequestId,
   });
 
   @override
@@ -95,13 +98,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
 
       final List<dynamic> rawMessages = data['messages'] ?? [];
-      messages = rawMessages
-          .map((json) => MessageModel.fromJson(json))
-          .toList();
+      messages = rawMessages.map((json) => MessageModel.fromJson(json)).toList();
 
       if (!mounted) return;
       setState(() => isLoading = false);
       _scrollToBottom();
+
+      if (widget.matchingRequestId != null) {
+        await _checkSessionCompletion();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -109,6 +114,121 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         errorMessage = 'Chat could not be loaded: $e';
         chatPartnerName = widget.otherUserName ?? 'Chat';
       });
+    }
+  }
+
+  Future<void> _checkSessionCompletion() async {
+    try {
+      final session = await ref
+          .read(sessionServiceProvider)
+          .getSessionByMatchRequestId(widget.matchingRequestId!);
+
+      if (session.status != 'ACTIVE' && session.status != 'COMPLETION_CONFIRMATION_PENDING') return;
+
+      final now = DateTime.now();
+      final difference = now.difference(session.createdAt).inDays;
+
+      if (difference >= 3 && mounted) {
+        _showCompletionDialog(session.id);
+      }
+    } catch (e) {
+      debugPrint('Session check failed: $e');
+    }
+  }
+
+  Future<void> _showCompletionDialog(String sessionId) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            '👋 Did you meet?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            'How did your skill exchange with $chatPartnerName go?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () => _submitCompletion(context, sessionId, 'COMPLETED'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('✓ We met!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () => _submitCompletion(context, sessionId, 'NOT_YET'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Not yet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: () => _submitCompletion(context, sessionId, 'CANCELLED'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Cancelled', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: () => _submitCompletion(context, sessionId, 'PROBLEM'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Had a problem', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _submitCompletion(BuildContext context, String sessionId, String answer) async {
+    Navigator.pop(context);
+    try {
+      await ref.read(sessionServiceProvider).submitCompletionResponse(
+        sessionId: sessionId,
+        answer: answer,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Response submitted!'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+      );
     }
   }
 
@@ -128,13 +248,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
 
       messageController.clear();
-
       await loadConversation();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Message could not be sent: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Message could not be sent: $e')),
+      );
     } finally {
       if (mounted) setState(() => isSending = false);
     }
@@ -203,9 +322,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   radius: 20,
                   backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
                   child: Text(
-                    chatPartnerName.isNotEmpty
-                        ? chatPartnerName[0].toUpperCase()
-                        : '?',
+                    chatPartnerName.isNotEmpty ? chatPartnerName[0].toUpperCase() : '?',
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontWeight: FontWeight.w900,
@@ -230,17 +347,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         body: SafeArea(
           child: isLoading
-              ? const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryBlue,
-            ),
-          )
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue))
               : errorMessage != null
-              ? _ErrorState(
-            isDark: isDark,
-            message: errorMessage!,
-            onPressed: loadConversation,
-          )
+              ? _ErrorState(isDark: isDark, message: errorMessage!, onPressed: loadConversation)
               : Column(
             children: [
               Expanded(
@@ -248,27 +357,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ? _EmptyChatState(isDark: isDark)
                     : ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 16,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe =
-                        message.senderId == currentUserId;
-
+                    final isMe = message.senderId == currentUserId;
                     return Align(
-                      alignment: isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Padding(
-                        padding:
-                        const EdgeInsets.only(bottom: 10),
-                        child: _MessageBubble(
-                          text: message.content,
-                          isMe: isMe,
-                        ),
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _MessageBubble(text: message.content, isMe: isMe),
                       ),
                     );
                   },
@@ -307,11 +405,7 @@ class _MessageInputArea extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-        ),
+        border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12)),
       ),
       child: Row(
         children: [
@@ -322,32 +416,17 @@ class _MessageInputArea extends StatelessWidget {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-              ),
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Type a message...',
-                hintStyle: TextStyle(
-                  color: isDark ? Colors.white54 : Colors.black45,
-                ),
+                hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black45),
                 filled: true,
-                fillColor: isDark
-                    ? const Color(0xFF1E293B)
-                    : Colors.white.withOpacity(0.95),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: isDark ? const Color(0xFF1E293B) : Colors.white.withOpacity(0.95),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(22),
-                  borderSide: const BorderSide(
-                    color: AppColors.primaryBlue,
-                    width: 1.4,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
                 ),
               ),
             ),
@@ -359,30 +438,13 @@ class _MessageInputArea extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppColors.primaryBlueGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryBlue.withOpacity(0.25),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: AppColors.primaryBlue.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 4))],
             ),
             child: IconButton(
               onPressed: isSending ? null : onSend,
               icon: isSending
-                  ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-                  : const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 21,
-              ),
+                  ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send_rounded, color: Colors.white, size: 21),
             ),
           ),
         ],
@@ -395,52 +457,30 @@ class _MessageBubble extends StatelessWidget {
   final String text;
   final bool isMe;
 
-  const _MessageBubble({
-    required this.text,
-    required this.isMe,
-  });
+  const _MessageBubble({required this.text, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       constraints: const BoxConstraints(maxWidth: 280),
       decoration: BoxDecoration(
         gradient: isMe ? AppColors.primaryBlueGradient : null,
-        color: isMe
-            ? null
-            : isDark
-            ? const Color(0xFF1E293B)
-            : Colors.white,
+        color: isMe ? null : isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
           bottomLeft: Radius.circular(isMe ? 18 : 4),
           bottomRight: Radius.circular(isMe ? 4 : 18),
         ),
-        border: isMe
-            ? null
-            : Border.all(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.16 : 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: isMe ? null : Border.all(color: isDark ? Colors.white12 : Colors.black12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.16 : 0.05), blurRadius: 12, offset: const Offset(0, 5))],
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: isMe
-              ? Colors.white
-              : isDark
-              ? AppColors.textColor
-              : Colors.black87,
+          color: isMe ? Colors.white : isDark ? AppColors.textColor : Colors.black87,
           fontSize: 14.5,
           height: 1.35,
           fontWeight: FontWeight.w500,
@@ -452,7 +492,6 @@ class _MessageBubble extends StatelessWidget {
 
 class _EmptyChatState extends StatelessWidget {
   final bool isDark;
-
   const _EmptyChatState({required this.isDark});
 
   @override
@@ -461,9 +500,7 @@ class _EmptyChatState extends StatelessWidget {
       child: Text(
         'No messages yet.',
         style: TextStyle(
-          color: isDark
-              ? AppColors.subtitleDarkColor
-              : AppColors.subtitleBrightColor,
+          color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
           fontSize: 15,
         ),
       ),
@@ -476,11 +513,7 @@ class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onPressed;
 
-  const _ErrorState({
-    required this.isDark,
-    required this.message,
-    required this.onPressed,
-  });
+  const _ErrorState({required this.isDark, required this.message, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -490,42 +523,24 @@ class _ErrorState extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1E293B).withOpacity(0.85)
-                : Colors.white.withOpacity(0.95),
+            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black12,
-            ),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                color: Colors.redAccent,
-                size: 42,
-              ),
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 42),
               const SizedBox(height: 14),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? AppColors.textColor : Colors.black87,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+                style: TextStyle(color: isDark ? AppColors.textColor : Colors.black87, fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: onPressed,
-                child: const Text(
-                  'Try again',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                child: const Text('Try again', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
