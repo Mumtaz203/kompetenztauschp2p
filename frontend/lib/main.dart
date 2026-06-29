@@ -18,6 +18,7 @@ import 'screens/admin_match_requests_screen.dart';
 import 'screens/admin_sessions_screen.dart';
 import 'screens/admin_ratings_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'screens/settings_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -66,6 +67,7 @@ class MyApp extends StatelessWidget {
             '/admin-match-requests': (context) => const AdminMatchRequestsScreen(),
             '/admin-sessions': (context) => const AdminSessionsScreen(),
             '/admin-ratings': (context) => const AdminRatingsScreen(),
+            '/settings': (context) => const SettingsScreen(),
           },
 
           onGenerateRoute: (settings) {

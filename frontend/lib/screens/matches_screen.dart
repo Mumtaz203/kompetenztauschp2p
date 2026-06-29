@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/user_model.dart';
-import '../models/match_request_model.dart';
+import '../models/user/user_model.dart';
+import '../models/matching/match_request_model.dart';
+import '../models/session/session_model.dart';
+import '../models/rating/create_rating_request_model.dart';
 import '../services/auth_service.dart';
 import '../providers/service_providers.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -45,6 +47,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 
       final matchRequestService = ref.read(matchRequestServiceProvider);
       final userService = ref.read(userServiceProvider);
+      final sessionService = ref.read(sessionServiceProvider);
 
       final incomingRequests = await matchRequestService.getIncomingRequests(currentUserId);
       final acceptedMatches = await matchRequestService.getMatches(currentUserId);
@@ -72,7 +75,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         try {
           final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
           final user = await userService.getUserProfileById(userId: otherId);
-          tempMatches.add({'request': match, 'user': user});
+          final session = await sessionService.getSessionByMatchRequestId(match.id);
+          tempMatches.add({'request': match, 'user': user, 'session': session});
         } catch (e) {
           debugPrint("Failed to load user info for match, Error: $e");
           final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
@@ -105,11 +109,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   Future<void> _handleAccept(String requestId) async {
     try {
       await ref.read(matchRequestServiceProvider).acceptRequest(requestId, currentUserId);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request Accepted!'), backgroundColor: AppColors.primaryGreen),
       );
       loadData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
       );
@@ -119,15 +125,100 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
   Future<void> _handleReject(String requestId) async {
     try {
       await ref.read(matchRequestServiceProvider).rejectRequest(requestId, currentUserId);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request Rejected.')),
       );
       loadData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
       );
     }
+  }
+
+  Future<void> _showRatingDialog(SessionModel session, UserModel user) async {
+    double selectedPoints = 3;
+    final commentController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Rate ${user.username}'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Select points:'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < selectedPoints ? Icons.star : Icons.star_outline,
+                          color: Colors.amber,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            selectedPoints = index + 1;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: commentController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add a comment (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                  onPressed: () async {
+                    try {
+                      final request = CreateRatingRequestModel(
+                        sessionId: session.id,
+                        receiverUserId: user.id,
+                        points: selectedPoints,
+                        comment: commentController.text.isEmpty ? null : commentController.text,
+                      );
+                      await ref.read(ratingServiceProvider).createRating(request);
+                      if (!mounted) return;
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Rating sent!'),
+                          backgroundColor: AppColors.primaryGreen,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  },
+                  child: const Text('Send'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _onNavTap(BuildContext context, int index) {
@@ -146,7 +237,6 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       );
       return;
     }
-
     Navigator.pushNamed(
       context,
       '/chat',
@@ -203,15 +293,27 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       itemBuilder: (context, index) {
         final item = matchesData[index];
         final UserModel user = item['user'];
+        final SessionModel? session = item['session'];
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: const CircleAvatar(child: Icon(Icons.person)),
             title: Text(user.username, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('Teaches: ${user.offeredSkills.join(", ")}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primaryBlue),
-              onPressed: () => _openChat(user),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primaryBlue),
+                  onPressed: () => _openChat(user),
+                ),
+                if (session != null && session.status == 'RATING_OPEN')
+                  IconButton(
+                    icon: const Icon(Icons.star_outline, color: AppColors.primaryGreen),
+                    onPressed: () => _showRatingDialog(session, user),
+                  ),
+              ],
             ),
           ),
         );

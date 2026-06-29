@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/match_request_model.dart';
+import '../models/matching/match_request_model.dart';
 import 'auth_service.dart';
 
 class MatchRequestService {
-  static const String baseUrl = AuthService.baseUrl;
+  static String baseUrl = AuthService.baseUrl;
 
   Future<Map<String, String>> _headers() async {
     final token = await AuthService.getStoredToken();

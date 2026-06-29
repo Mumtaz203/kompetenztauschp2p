@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/message_model.dart';
+import '../models/chatting/message_model.dart';
 import 'auth_service.dart';
 
 class ChatService {
-  static const String baseUrl = AuthService.baseUrl;
+  static String baseUrl = AuthService.baseUrl;
 
   Future<Map<String, String>> get _headers async {
     final headers = {'Content-Type': 'application/json'};

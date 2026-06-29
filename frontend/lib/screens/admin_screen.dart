@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // EKLENDİ
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_colors.dart';
-import '../providers/auth_provider.dart'; // EKLENDİ
-import '../providers/service_providers.dart'; // EKLENDİ
+import '../providers/auth_provider.dart';
+import '../providers/service_providers.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});

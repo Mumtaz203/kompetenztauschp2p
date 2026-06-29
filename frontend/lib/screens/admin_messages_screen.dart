@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_colors.dart';
-import '../models/message_model.dart';
-import '../models/user_model.dart';
+import '../models/chatting/message_model.dart';
+import '../models/user/user_model.dart';
 import '../providers/service_providers.dart';
 
 class AdminMessagesScreen extends ConsumerStatefulWidget {
