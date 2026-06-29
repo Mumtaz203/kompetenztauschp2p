@@ -30,8 +30,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleAi(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ai_enabled', value);
-    await prefs.setBool('discover_mode_set', true);
     setState(() => _aiEnabled = value);
+  }
+
+  Future<void> _restartTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenTour', false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tour will start on your next visit to Home.'),
+        backgroundColor: AppColors.primaryGreen,
+      ),
+    );
   }
 
   Future<void> _toggleDarkMode(bool value) async {
@@ -91,6 +102,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: _aiEnabled,
                 onChanged: _toggleAi,
                 activeColor: AppColors.primaryBlue,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(title: 'Onboarding', isDark: isDark),
+            const SizedBox(height: 12),
+            _SettingsTile(
+              isDark: isDark,
+              icon: Icons.tour_outlined,
+              title: 'Restart App Tour',
+              subtitle: 'See the guided tour again on your next Home visit',
+              trailing: IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.primaryBlue),
+                onPressed: _restartTour,
               ),
             ),
           ],
