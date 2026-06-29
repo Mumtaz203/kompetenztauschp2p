@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
-import '../models/user_model.dart';
+import '../models/user/user_model.dart';
+import '../models/matching/discover_user_model.dart';
 import '../providers/service_providers.dart';
-import '../widgets/custom_gradient_button.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,54 +19,163 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
   int _selectedIndex = 0;
+  bool _aiEnabled = false;
 
-  late Future<List<UserModel>> _suggestedUsersFuture;
+  List<UserModel> _classicUsers = [];
+  List<DiscoverUserModel> _aiUsers = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _suggestedUsersFuture = _fetchSuggestedUsers();
+    _initAiPreference();
   }
 
-  Future<List<UserModel>> _fetchSuggestedUsers() async {
+  Future<void> _initAiPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLaunch = prefs.getBool('discover_mode_set') ?? false;
+
+    if (!isFirstLaunch) {
+      if (!mounted) return;
+      await _showAiBottomSheet();
+    } else {
+      _aiEnabled = prefs.getBool('ai_enabled') ?? false;
+      await _loadUsers();
+    }
+  }
+
+  Future<void> _showAiBottomSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Icon(Icons.auto_awesome_rounded, size: 48, color: AppColors.primaryBlue),
+              const SizedBox(height: 16),
+              Text(
+                'How do you want to discover?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'AI mode finds the best matches based on your skills. You can change this anytime in your profile.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Classic', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Enable AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    ).then((value) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('discover_mode_set', true);
+      await prefs.setBool('ai_enabled', value ?? false);
+      _aiEnabled = value ?? false;
+      await _loadUsers();
+    });
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final myId = await AuthService.getStoredUserId();
+      if (myId == null) throw Exception('User not found');
 
-      if (myId == null || myId.isEmpty) return [];
-
-      Set<String> excludeIds = {myId};
-
-      try {
+      if (_aiEnabled) {
+        final users = await ref.read(matchingServiceProvider).discoverUsers(myId);
+        if (!mounted) return;
+        setState(() {
+          _aiUsers = users;
+          _isLoading = false;
+        });
+      } else {
         final requestService = ref.read(matchRequestServiceProvider);
         final matches = await requestService.getMatches(myId);
         final outgoing = await requestService.getOutgoingRequests(myId);
         final incoming = await requestService.getIncomingRequests(myId);
 
-        for (final match in matches) {
-          excludeIds.add(
-            match.senderId == myId ? match.receiverId : match.senderId,
-          );
+        Set<String> excludeIds = {myId};
+        for (var match in matches) {
+          excludeIds.add(match.senderId == myId ? match.receiverId : match.senderId);
         }
+        for (var req in outgoing) excludeIds.add(req.receiverId);
+        for (var req in incoming) excludeIds.add(req.senderId);
 
-        for (final req in outgoing) {
-          excludeIds.add(req.receiverId);
-        }
+        final users = await ref.read(matchingServiceProvider).getRandom10Users();
+        users.removeWhere((user) => excludeIds.contains(user.id));
 
-        for (final req in incoming) {
-          excludeIds.add(req.senderId);
-        }
-      } catch (e) {
-        debugPrint('MATCH REQUEST FILTER COULD NOT BE LOADED: $e');
+        if (!mounted) return;
+        setState(() {
+          _classicUsers = users;
+          _isLoading = false;
+        });
       }
-
-      final allUsers = await ref.read(userServiceProvider).getRandom10Users();
-
-      allUsers.removeWhere((user) => excludeIds.contains(user.id));
-
-      allUsers.shuffle();
-      return allUsers.take(3).toList();
     } catch (e) {
-      throw Exception('Error fetching suggested users: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
     }
   }
 
@@ -77,9 +187,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
-
     setState(() => _selectedIndex = index);
-
     if (index == 1) {
       Navigator.pushReplacementNamed(context, '/matches');
     } else if (index == 2) {
@@ -99,261 +207,184 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(height: 18),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'SkillSwap',
-                        style: TextStyle(
-                          color: isDark ? AppColors.textColor : Colors.black87,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
                   Text(
-                    'Find people, exchange skills, grow together.',
+                    'SkillSwap',
                     style: TextStyle(
-                      color: isDark
-                          ? AppColors.subtitleDarkColor
-                          : AppColors.subtitleBrightColor,
-                      fontSize: 15,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.textColor : Colors.black87,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  TextField(
-                    controller: searchController,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                    onSubmitted: _onSearchSubmitted,
-                    decoration: InputDecoration(
-                      hintText: 'Search skills or users',
-                      hintStyle: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.black45,
-                        fontSize: 15,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: isDark ? Colors.white54 : Colors.black45,
-                      ),
-                      filled: true,
-                      fillColor:
-                      isDark ? const Color(0xFF1E293B) : Colors.white,
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 18),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white12 : Colors.black12,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(
-                          color: AppColors.primaryBlue,
-                          width: 1.8,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
                   Container(
-                    padding: const EdgeInsets.all(22),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E293B).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryBlue.withOpacity(
-                            isDark ? 0.12 : 0.08,
-                          ),
-                          blurRadius: 24,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                      color: _aiEnabled
+                          ? AppColors.primaryBlue.withOpacity(0.15)
+                          : (isDark ? Colors.white12 : Colors.black12),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.primaryBlueGradient,
-                          ),
-                          child: const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                          ),
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: _aiEnabled ? AppColors.primaryBlue : (isDark ? Colors.white38 : Colors.black38),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Complete your profile',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? AppColors.textColor
-                                      : Colors.black87,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Add your skills to get better matches.',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? AppColors.subtitleDarkColor
-                                      : AppColors.subtitleBrightColor,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(width: 6),
+                        Text(
+                          _aiEnabled ? 'AI On' : 'AI Off',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _aiEnabled ? AppColors.primaryBlue : (isDark ? Colors.white38 : Colors.black38),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/my-profile');
-                          },
-                          icon: const Icon(Icons.arrow_forward_ios_rounded),
-                          color: AppColors.primaryBlue,
                         ),
                       ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Suggested Matches',
-                        style: TextStyle(
-                          color: isDark ? AppColors.textColor : Colors.black87,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      Text(
-                        'Top 3',
-                        style: TextStyle(
-                          color: isDark
-                              ? AppColors.subtitleDarkColor
-                              : AppColors.subtitleBrightColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: FutureBuilder<List<UserModel>>(
-                      future: _suggestedUsersFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Text(
-                              'Error: ${snapshot.error}',
-                              style: TextStyle(
-                                color: isDark ? Colors.white70 : Colors.black54,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          );
-                        }
-
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No new suggested matches right now.',
-                              style: TextStyle(
-                                color: isDark ? Colors.white54 : Colors.black54,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final suggestedUsers = snapshot.data!;
-
-                        return ListView.separated(
-                          itemCount: suggestedUsers.length,
-                          separatorBuilder: (context, index) =>
-                          const SizedBox(height: 14),
-                          itemBuilder: (context, index) {
-                            final user = suggestedUsers[index];
-
-                            return _SuggestedUserCard(
-                              user: user,
-                              isDark: isDark,
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/user-profile',
-                                  arguments: {
-                                    'userId': user.id,
-                                    'username': user.username,
-                                    'email': user.email,
-                                    'offeredSkills': user.offeredSkills,
-                                    'wantedSkills': user.wantedSkills,
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                'Find people, exchange skills, grow together.',
+                style: TextStyle(
+                  color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
+                  fontSize: 15,
+                  height: 1.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: searchController,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                onSubmitted: _onSearchSubmitted,
+                decoration: InputDecoration(
+                  hintText: 'Search skills or users',
+                  hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 15),
+                  prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white54 : Colors.black45),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF1E293B).withOpacity(0.85)
+                      : Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(isDark ? 0.12 : 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppColors.primaryBlueGradient,
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Complete your profile',
+                            style: TextStyle(
+                              color: isDark ? AppColors.textColor : Colors.black87,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Add your skills to get better matches.',
+                            style: TextStyle(
+                              color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pushNamed(context, '/my-profile'),
+                      icon: const Icon(Icons.arrow_forward_ios_rounded),
+                      color: AppColors.primaryBlue,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _aiEnabled ? 'AI Recommendations' : 'Suggested Matches',
+                    style: TextStyle(
+                      color: isDark ? AppColors.textColor : Colors.black87,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    _aiEnabled ? 'Personalized' : 'Random',
+                    style: TextStyle(
+                      color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Center(child: Text(_error!, style: const TextStyle(color: Colors.redAccent)))
+                    : _aiEnabled
+                    ? _buildAiList(isDark)
+                    : _buildClassicList(isDark),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -364,36 +395,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Matches',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: 'Matches'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
   }
+
+  Widget _buildClassicList(bool isDark) {
+    if (_classicUsers.isEmpty) {
+      return Center(child: Text('No suggested matches right now.', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)));
+    }
+    return ListView.separated(
+      itemCount: _classicUsers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final user = _classicUsers[index];
+        return _ClassicUserCard(user: user, isDark: isDark, onTap: () {
+          Navigator.pushNamed(context, '/user-profile', arguments: {
+            'userId': user.id,
+            'username': user.username,
+            'email': user.email,
+            'offeredSkills': user.offeredSkills,
+            'wantedSkills': user.wantedSkills,
+          });
+        });
+      },
+    );
+  }
+
+  Widget _buildAiList(bool isDark) {
+    if (_aiUsers.isEmpty) {
+      return Center(child: Text('No AI recommendations right now.', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)));
+    }
+    return ListView.separated(
+      itemCount: _aiUsers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final user = _aiUsers[index];
+        return _AiUserCard(user: user, isDark: isDark, onTap: () {
+          Navigator.pushNamed(context, '/user-profile', arguments: {
+            'userId': user.userId,
+            'username': user.username,
+            'email': '',
+            'offeredSkills': user.matchedSkills,
+            'wantedSkills': [],
+          });
+        });
+      },
+    );
+  }
 }
 
-class _SuggestedUserCard extends StatelessWidget {
+class _ClassicUserCard extends StatelessWidget {
   final UserModel user;
   final bool isDark;
   final VoidCallback onTap;
 
-  const _SuggestedUserCard({
-    required this.user,
-    required this.isDark,
-    required this.onTap,
-  });
+  const _ClassicUserCard({required this.user, required this.isDark, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -406,105 +466,104 @@ class _SuggestedUserCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF1E293B).withOpacity(0.82)
-              : Colors.white.withOpacity(0.95),
+          color: isDark ? const Color(0xFF1E293B).withOpacity(0.82) : Colors.white.withOpacity(0.95),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.18 : 0.05), blurRadius: 18, offset: const Offset(0, 8))],
         ),
         child: Row(
           children: [
             CircleAvatar(
               radius: 28,
               backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
-              child: Text(
-                user.username.isNotEmpty
-                    ? user.username[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              child: Text(user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.primaryBlue, fontSize: 20, fontWeight: FontWeight.w900)),
             ),
-
             const SizedBox(width: 16),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user.username,
-                    style: TextStyle(
-                      color: isDark ? AppColors.textColor : Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  Text(user.username, style: TextStyle(color: isDark ? AppColors.textColor : Colors.black87, fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
-
                   if (offeredSkills.isNotEmpty)
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: offeredSkills
-                          .map(
-                            (skill) => _SkillChip(
-                          label: skill,
-                          isDark: isDark,
-                          isPrimary: true,
-                        ),
-                      )
-                          .toList(),
-                    )
-                  else
-                    Text(
-                      'No skills added yet',
-                      style: TextStyle(
-                        color: isDark
-                            ? AppColors.subtitleDarkColor
-                            : AppColors.subtitleBrightColor,
-                        fontSize: 13,
-                      ),
-                    ),
-
+                    Wrap(spacing: 6, runSpacing: 6, children: offeredSkills.map((s) => _SkillChip(label: s, isDark: isDark, isPrimary: true)).toList()),
                   if (wantedSkills.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(spacing: 6, runSpacing: 6, children: wantedSkills.map((s) => _SkillChip(label: s, isDark: isDark, isPrimary: false)).toList()),
+                  ],
+                  if (user.averagePoints != null) ...[
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: wantedSkills
-                          .map(
-                            (skill) => _SkillChip(
-                          label: skill,
-                          isDark: isDark,
-                          isPrimary: false,
-                        ),
-                      )
-                          .toList(),
-                    ),
+                    Row(children: [
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
+                      Text('${user.averagePoints!.toStringAsFixed(1)} (${user.ratingCount})',
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)),
+                    ]),
                   ],
                 ],
               ),
             ),
+            Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white38 : Colors.black38),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-            const SizedBox(width: 8),
+class _AiUserCard extends StatelessWidget {
+  final DiscoverUserModel user;
+  final bool isDark;
+  final VoidCallback onTap;
 
-            Icon(
-              Icons.chevron_right_rounded,
-              color: isDark ? Colors.white38 : Colors.black38,
+  const _AiUserCard({required this.user, required this.isDark, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B).withOpacity(0.82) : Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
+          boxShadow: [BoxShadow(color: AppColors.primaryBlue.withOpacity(0.08), blurRadius: 18, offset: const Offset(0, 8))],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+              child: Text(user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.primaryBlue, fontSize: 20, fontWeight: FontWeight.w900)),
             ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.username, style: TextStyle(color: isDark ? AppColors.textColor : Colors.black87, fontSize: 16, fontWeight: FontWeight.w800)),
+                  if (user.matchReason != null) ...[
+                    const SizedBox(height: 4),
+                    Text(user.matchReason!, style: TextStyle(fontSize: 12, color: AppColors.primaryBlue.withOpacity(0.8), fontWeight: FontWeight.w600)),
+                  ],
+                  if (user.matchedSkills.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 6, runSpacing: 6, children: user.matchedSkills.take(3).map((s) => _SkillChip(label: s, isDark: isDark, isPrimary: true)).toList()),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.primaryBlue),
+                    const SizedBox(width: 4),
+                    Text('Match score: ${user.score}', style: const TextStyle(fontSize: 12, color: AppColors.primaryBlue, fontWeight: FontWeight.w700)),
+                  ]),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white38 : Colors.black38),
           ],
         ),
       ),
@@ -517,30 +576,15 @@ class _SkillChip extends StatelessWidget {
   final bool isDark;
   final bool isPrimary;
 
-  const _SkillChip({
-    required this.label,
-    required this.isDark,
-    required this.isPrimary,
-  });
+  const _SkillChip({required this.label, required this.isDark, required this.isPrimary});
 
   @override
   Widget build(BuildContext context) {
     final color = isPrimary ? AppColors.primaryBlue : AppColors.primaryGreen;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(isDark ? 0.16 : 0.12),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      decoration: BoxDecoration(color: color.withOpacity(isDark ? 0.16 : 0.12), borderRadius: BorderRadius.circular(30)),
+      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
     );
   }
 }

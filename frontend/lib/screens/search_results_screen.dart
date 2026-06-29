@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/user_model.dart';
+import '../models/user/user_model.dart';
 import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 import '../core/app_colors.dart';
@@ -280,6 +280,20 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   fontSize: 14,
                 ),
               ),
+
+              if (user.averagePoints != null && user.ratingCount != null && user.ratingCount! > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${user.averagePoints!.toStringAsFixed(1)} (${user.ratingCount} ratings)',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: 16),
 

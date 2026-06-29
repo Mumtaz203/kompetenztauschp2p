@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../models/user_model.dart';
-import '../models/message_model.dart';
-import '../models/conversation_model.dart';
-import '../models/match_request_model.dart';
+import '../models/user/user_model.dart';
+import '../models/chatting/message_model.dart';
+import '../models/chatting/conversation_model.dart';
+import '../models/matching/match_request_model.dart';
 import 'auth_service.dart';
 
 class AdminService {
-  static const String baseUrl = AuthService.baseUrl;
+  static String baseUrl = AuthService.baseUrl;
 
   Map<String, String> _headers(String? token) {
     return {

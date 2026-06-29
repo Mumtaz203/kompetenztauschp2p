@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/auth_response_model.dart';
+import '../models/auth/auth_response_model.dart';
 import '../services/auth_service.dart';
 import 'service_providers.dart';
 

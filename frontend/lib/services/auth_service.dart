@@ -2,10 +2,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import '../models/auth_response_model.dart';
+import '../models/auth/auth_response_model.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:8081';
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8080';  // Docker port
+    }
+    return 'http://10.0.2.2:8081';   // Android emulator
+  }
+
   static const String _jwtTokenKey = 'jwt_token';
   static const String _userIdKey = 'my_user_id';
   static const String _userRoleKey = 'my_user_role';
