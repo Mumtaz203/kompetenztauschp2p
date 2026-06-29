@@ -90,9 +90,6 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getUserById(@PathParam("id") UUID id) {
 
-
-        authenticationGuard.requireSelfOrAdmin(id);
-
         return userRepositoryPort.findUserById(id)
                 .map(user -> {
                     RatingSummary ratingSummary1 = getRatingSummaryUseCase.getRatingSummaryForUser(user.getId());
