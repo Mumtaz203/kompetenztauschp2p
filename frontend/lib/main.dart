@@ -13,6 +13,10 @@ import 'screens/search_results_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_messages_screen.dart';
+import 'screens/admin_conversations_screen.dart';
+import 'screens/admin_match_requests_screen.dart';
+import 'screens/admin_sessions_screen.dart';
+import 'screens/admin_ratings_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
@@ -58,6 +62,10 @@ class MyApp extends StatelessWidget {
             '/admin': (context) => const AdminScreen(),
             '/admin-users': (context) => const AdminUsersScreen(),
             '/admin-messages': (context) => const AdminMessagesScreen(),
+            '/admin-conversations': (context) => const AdminConversationsScreen(),
+            '/admin-match-requests': (context) => const AdminMatchRequestsScreen(),
+            '/admin-sessions': (context) => const AdminSessionsScreen(),
+            '/admin-ratings': (context) => const AdminRatingsScreen(),
           },
 
           onGenerateRoute: (settings) {

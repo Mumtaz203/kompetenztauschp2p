@@ -29,54 +29,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<List<UserModel>> _fetchSuggestedUsers() async {
     try {
-      final token = await AuthService.getStoredToken();
       final myId = await AuthService.getStoredUserId();
 
-      if (myId == null) return [];
-
-      final requestService = ref.read(matchRequestServiceProvider);
-      final matches = await requestService.getMatches(myId);
-      final outgoing = await requestService.getOutgoingRequests(myId);
-      final incoming = await requestService.getIncomingRequests(myId);
+      if (myId == null || myId.isEmpty) return [];
 
       Set<String> excludeIds = {myId};
-      for (var match in matches) {
-        excludeIds.add(match.senderId == myId ? match.receiverId : match.senderId);
-      }
-      for (var req in outgoing) excludeIds.add(req.receiverId);
-      for (var req in incoming) excludeIds.add(req.senderId);
 
-      final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/users/getAllUsers'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      try {
+        final requestService = ref.read(matchRequestServiceProvider);
+        final matches = await requestService.getMatches(myId);
+        final outgoing = await requestService.getOutgoingRequests(myId);
+        final incoming = await requestService.getIncomingRequests(myId);
 
-      if (response.statusCode == 200) {
-        final decodedData = jsonDecode(response.body);
-        List<dynamic> usersList = [];
-
-        if (decodedData is Map && decodedData.containsKey('users')) {
-          usersList = decodedData['users'];
-        } else if (decodedData is List) {
-          usersList = decodedData;
+        for (final match in matches) {
+          excludeIds.add(
+            match.senderId == myId ? match.receiverId : match.senderId,
+          );
         }
 
-        final allUsers = usersList.map((json) => UserModel.fromJson(json)).toList();
+        for (final req in outgoing) {
+          excludeIds.add(req.receiverId);
+        }
 
-        allUsers.removeWhere((user) => excludeIds.contains(user.id));
-
-        allUsers.shuffle();
-        return allUsers.take(3).toList();
-      } else {
-        throw Exception(
-          'Server cancelled: ${response.statusCode} - ${response.body}',
-        );
+        for (final req in incoming) {
+          excludeIds.add(req.senderId);
+        }
+      } catch (e) {
+        debugPrint('MATCH REQUEST FILTER COULD NOT BE LOADED: $e');
       }
+
+      final allUsers = await ref.read(userServiceProvider).getRandom10Users();
+
+      allUsers.removeWhere((user) => excludeIds.contains(user.id));
+
+      allUsers.shuffle();
+      return allUsers.take(3).toList();
     } catch (e) {
-      throw Exception('Error fetching users: $e');
+      throw Exception('Error fetching suggested users: $e');
     }
   }
 

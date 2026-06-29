@@ -172,10 +172,14 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       ),
     );
   }
-
   Widget _buildResultCard(UserModel user) {
-    String teaches = user.offeredSkills.isNotEmpty ? user.offeredSkills.join(', ') : 'None';
-    String wants = user.wantedSkills.isNotEmpty ? user.wantedSkills.join(', ') : 'None';
+    String teaches = user.offeredSkills.isNotEmpty
+        ? user.offeredSkills.join(', ')
+        : 'None';
+
+    String wants = user.wantedSkills.isNotEmpty
+        ? user.wantedSkills.join(', ')
+        : 'None';
 
     bool isMatched = matchedUsers.contains(user.id);
     bool hasSentRequest = sentRequests.contains(user.id);
@@ -195,39 +199,114 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       isDisabled = true;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            user.username,
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text('Teaches: $teaches', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text('Wants to learn: $wants', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isDisabled ? Colors.grey : AppColors.primaryBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              onPressed: isDisabled ? null : () => _sendMatchRequest(user.id),
-              child: Text(
-                buttonText,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/user-profile',
+            arguments: {
+              'userId': user.id,
+              'username': user.username,
+              'email': user.email,
+              'offeredSkills': user.offeredSkills,
+              'wantedSkills': user.wantedSkills,
+            },
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
             ),
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+                    child: Text(
+                      user.username.isNotEmpty
+                          ? user.username[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      user.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white38,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Text(
+                'Teaches: $teaches',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+
+              const SizedBox(height: 4),
+
+              Text(
+                'Wants to learn: $wants',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    isDisabled ? Colors.grey : AppColors.primaryBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: isDisabled
+                      ? null
+                      : () => _sendMatchRequest(user.id),
+                  child: Text(
+                    buttonText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

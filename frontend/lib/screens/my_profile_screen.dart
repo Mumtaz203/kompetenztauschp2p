@@ -41,15 +41,38 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     try {
       final loadedUser = await ref.read(userServiceProvider).getMyProfile();
 
+      if (!mounted) return;
       setState(() {
         user = loadedUser;
         isLoading = false;
+        errorMessage = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         errorMessage = 'Could not load profile: $e';
       });
+    }
+  }
+
+  Future<void> _openEditProfile() async {
+    if (user == null) return;
+
+    final updatedUser = await Navigator.pushNamed(
+      context,
+      '/edit-profile',
+      arguments: user,
+    );
+
+    if (updatedUser is UserModel && mounted) {
+      setState(() {
+        user = updatedUser;
+      });
+    }
+
+    if (mounted) {
+      await loadProfile();
     }
   }
 
@@ -84,7 +107,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Log Out',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -139,19 +165,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           _ProfileHeader(
             user: user!,
             isDark: isDark,
-            onEditPressed: () async {
-              final updatedUser = await Navigator.pushNamed(
-                context,
-                '/edit-profile',
-                arguments: user,
-              );
-
-              if (updatedUser is UserModel) {
-                setState(() {
-                  user = updatedUser;
-                });
-              }
-            },
+            onEditPressed: _openEditProfile,
           ),
           const SizedBox(height: 24),
           _SkillSection(
@@ -160,6 +174,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
             skills: user!.offeredSkills,
             color: AppColors.primaryBlue,
             isDark: isDark,
+            onTap: _openEditProfile,
           ),
           const SizedBox(height: 18),
           _SkillSection(
@@ -168,6 +183,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
             skills: user!.wantedSkills,
             color: AppColors.primaryGreen,
             isDark: isDark,
+            onTap: _openEditProfile,
           ),
         ],
       );
@@ -233,6 +249,9 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasUniversity = user.university.trim().isNotEmpty;
+    final hasRating = user.ratingCount > 0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -288,6 +307,57 @@ class _ProfileHeader extends StatelessWidget {
               height: 1.4,
             ),
           ),
+          if (hasUniversity) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.account_balance_outlined,
+                  size: 16,
+                  color: AppColors.primaryGreen,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    user.university,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColors.subtitleDarkColor
+                          : AppColors.subtitleBrightColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (hasRating) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.star_rounded,
+                  size: 18,
+                  color: Colors.amber,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '${user.averagePoints.toStringAsFixed(1)} (${user.ratingCount} ratings)',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.subtitleDarkColor
+                        : AppColors.subtitleBrightColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 22),
           SizedBox(
             width: double.infinity,
@@ -322,6 +392,7 @@ class _SkillSection extends StatelessWidget {
   final List<String> skills;
   final Color color;
   final bool isDark;
+  final VoidCallback? onTap;
 
   const _SkillSection({
     required this.title,
@@ -329,64 +400,83 @@ class _SkillSection extends StatelessWidget {
     required this.skills,
     required this.color,
     required this.isDark,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E293B).withOpacity(0.72)
-            : Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 10),
-              Text(
-                title,
-                style: TextStyle(
-                  color: isDark ? AppColors.textColor : Colors.black87,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1E293B).withOpacity(0.72)
+              : Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black12,
           ),
-          const SizedBox(height: 14),
-          if (skills.isEmpty)
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textColor : Colors.black87,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Icon(Icons.edit_outlined, color: color, size: 18),
+              ],
+            ),
+            const SizedBox(height: 6),
             Text(
-              'No skills added yet.',
+              'Tap to edit',
               style: TextStyle(
                 color: isDark
                     ? AppColors.subtitleDarkColor
                     : AppColors.subtitleBrightColor,
-                fontSize: 14,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: skills
-                  .map(
-                    (skill) => _SkillChip(
-                  label: skill,
-                  color: color,
-                  isDark: isDark,
+            ),
+            const SizedBox(height: 14),
+            if (skills.isEmpty)
+              Text(
+                'No skills added yet.',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.subtitleDarkColor
+                      : AppColors.subtitleBrightColor,
+                  fontSize: 14,
                 ),
               )
-                  .toList(),
-            ),
-        ],
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: skills
+                    .map(
+                      (skill) => _SkillChip(
+                    label: skill,
+                    color: color,
+                    isDark: isDark,
+                  ),
+                )
+                    .toList(),
+              ),
+          ],
+        ),
       ),
     );
   }

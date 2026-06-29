@@ -18,8 +18,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   UserModel? user;
 
   final usernameController = TextEditingController();
-  final teachSkillsController = TextEditingController();
-  final learnSkillsController = TextEditingController();
+  final universityController = TextEditingController();
+  final newTeachSkillController = TextEditingController();
+  final newLearnSkillController = TextEditingController();
+
+  List<String> offeredSkills = [];
+  List<String> wantedSkills = [];
 
   bool isLoading = false;
   bool didFillFields = false;
@@ -31,12 +35,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (didFillFields) return;
 
     final routeUser = ModalRoute.of(context)!.settings.arguments as UserModel;
-
     user = routeUser;
 
     usernameController.text = routeUser.username;
-    teachSkillsController.text = routeUser.offeredSkills.join(', ');
-    learnSkillsController.text = routeUser.wantedSkills.join(', ');
+    universityController.text = routeUser.university;
+
+    offeredSkills = List<String>.from(routeUser.offeredSkills);
+    wantedSkills = List<String>.from(routeUser.wantedSkills);
 
     didFillFields = true;
   }
@@ -52,18 +57,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
 
     final username = usernameController.text.trim();
-
-    final offeredSkills = teachSkillsController.text
-        .split(',')
-        .map((skill) => skill.trim())
-        .where((skill) => skill.isNotEmpty)
-        .toList();
-
-    final wantedSkills = learnSkillsController.text
-        .split(',')
-        .map((skill) => skill.trim())
-        .where((skill) => skill.isNotEmpty)
-        .toList();
+    final university = universityController.text.trim();
 
     if (username.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,9 +69,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => isLoading = true);
 
     try {
-      final updatedUser = await ref.read(userServiceProvider).updateMyProfile(
+      await ref.read(userServiceProvider).updateMyName(
         userId: user!.id,
-        username: username,
+        name: username,
+      );
+
+      await ref.read(userServiceProvider).updateMyUniversity(
+        userId: user!.id,
+        university: university,
+      );
+
+      final updatedUser = await ref.read(userServiceProvider).updateMySkills(
+        userId: user!.id,
         offeredSkills: offeredSkills,
         wantedSkills: wantedSkills,
       );
@@ -92,21 +95,152 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not update profile: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update profile: $e')),
+      );
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
+  void addSkill({
+    required TextEditingController controller,
+    required bool isOffered,
+  }) {
+    final skill = controller.text.trim();
+
+    if (skill.isEmpty) return;
+
+    final list = isOffered ? offeredSkills : wantedSkills;
+
+    if (list.any((item) => item.toLowerCase() == skill.toLowerCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This skill already exists.')),
+      );
+      return;
+    }
+
+    setState(() {
+      list.add(skill);
+      controller.clear();
+    });
+  }
+
+  void removeSkill({
+    required String skill,
+    required bool isOffered,
+  }) {
+    setState(() {
+      if (isOffered) {
+        offeredSkills.remove(skill);
+      } else {
+        wantedSkills.remove(skill);
+      }
+    });
+  }
+
   @override
   void dispose() {
     usernameController.dispose();
-    teachSkillsController.dispose();
-    learnSkillsController.dispose();
+    universityController.dispose();
+    newTeachSkillController.dispose();
+    newLearnSkillController.dispose();
     super.dispose();
   }
+
+  Widget _buildInputLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkillEditor({
+    required String title,
+    required IconData icon,
+    required List<String> skills,
+    required TextEditingController controller,
+    required bool isOffered,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: isOffered ? AppColors.primaryBlue : AppColors.primaryGreen),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (skills.isEmpty)
+            const Text('No skills added yet.')
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: skills.map((skill) {
+                return Chip(
+                  label: Text(skill),
+                  deleteIcon: const Icon(Icons.close, size: 18),
+                  onDeleted: () => removeSkill(skill: skill, isOffered: isOffered),
+                );
+              }).toList(),
+            ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: 'Add skill',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onSubmitted: (_) => addSkill(
+                    controller: controller,
+                    isOffered: isOffered,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton.filled(
+                onPressed: () => addSkill(
+                  controller: controller,
+                  isOffered: isOffered,
+                ),
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -114,18 +248,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/my-profile', (route) => false);
       },
       child: Scaffold(
         backgroundColor: AppColors.backgroundColor,
         appBar: AppBar(
           leading: IconButton(
             onPressed: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/home',
-                    (route) => false,
-              );
+              Navigator.pop(context);
             },
             icon: const Icon(Icons.arrow_back),
           ),
@@ -159,22 +289,33 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                 const SizedBox(height: 18),
 
-                _buildInputLabel('Skills I can teach'),
+                _buildInputLabel('University'),
                 CustomTextField(
-                  controller: teachSkillsController,
+                  controller: universityController,
                   labelText: '',
-                  hintText: 'Example: Python, Math, Design',
+                  hintText: 'Example: THWS Würzburg',
                   prefixIcon: Icons.school_outlined,
                 ),
 
                 const SizedBox(height: 18),
 
-                _buildInputLabel('Skills I want to learn'),
-                CustomTextField(
-                  controller: learnSkillsController,
-                  labelText: '',
-                  hintText: 'Example: Spanish, Photography',
-                  prefixIcon: Icons.lightbulb_outline,
+
+                _buildSkillEditor(
+                  title: 'Skills I can teach',
+                  icon: Icons.school_outlined,
+                  skills: offeredSkills,
+                  controller: newTeachSkillController,
+                  isOffered: true,
+                ),
+
+                const SizedBox(height: 18),
+
+                _buildSkillEditor(
+                  title: 'Skills I want to learn',
+                  icon: Icons.auto_awesome_outlined,
+                  skills: wantedSkills,
+                  controller: newLearnSkillController,
+                  isOffered: false,
                 ),
 
                 const SizedBox(height: 28),
@@ -187,20 +328,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textColor,
         ),
       ),
     );
