@@ -160,7 +160,49 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                 Navigator.pushNamed(context, '/admin-messages').then((_) => _loadDashboardStats());
               },
             ),
+            const SizedBox(height: 14),
 
+            _AdminNavigationCard(
+              icon: Icons.forum_outlined,
+              title: 'Conversation Management',
+              description: 'View, inspect and delete conversations.',
+              onTap: () {
+                Navigator.pushNamed(context, '/admin-conversations').then((_) => _loadDashboardStats());
+              },
+            ),
+
+            const SizedBox(height: 14),
+
+            _AdminNavigationCard(
+              icon: Icons.handshake_outlined,
+              title: 'Match Request Management',
+              description: 'Update or delete match requests.',
+              onTap: () {
+                Navigator.pushNamed(context, '/admin-match-requests').then((_) => _loadDashboardStats());
+              },
+            ),
+
+            const SizedBox(height: 14),
+
+            _AdminNavigationCard(
+              icon: Icons.event_available_outlined,
+              title: 'Session Management',
+              description: 'Create sessions and manage rating windows.',
+              onTap: () {
+                Navigator.pushNamed(context, '/admin-sessions').then((_) => _loadDashboardStats());
+              },
+            ),
+
+            const SizedBox(height: 14),
+
+            _AdminNavigationCard(
+              icon: Icons.star_rate_outlined,
+              title: 'Rating Management',
+              description: 'View rating summaries and publish ratings.',
+              onTap: () {
+                Navigator.pushNamed(context, '/admin-ratings').then((_) => _loadDashboardStats());
+              },
+            ),
             const SizedBox(height: 24),
 
           ],
