@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../models/user/user_model.dart';
@@ -21,6 +20,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
   bool _aiEnabled = false;
 
+  final GlobalKey _searchKey = GlobalKey();
+  final GlobalKey _profileBannerKey = GlobalKey();
+  final GlobalKey _listKey = GlobalKey();
+  final GlobalKey _navKey = GlobalKey();
+
   List<UserModel> _classicUsers = [];
   List<DiscoverUserModel> _aiUsers = [];
   bool _isLoading = true;
@@ -30,6 +34,136 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _initAiPreference();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndStartTour();
+    });
+  }
+
+  Future<void> _checkAndStartTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTour = prefs.getBool('hasSeenTour') ?? false;
+    if (!hasSeenTour && mounted) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      _showTourDialog();
+    }
+  }
+
+  Future<void> _showTourDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('👋 Welcome to SkillSwap!', textAlign: TextAlign.center),
+          content: const Text(
+            'Would you like a quick tour of the app?',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('hasSeenTour', true);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You can restart the tour anytime in Settings.'),
+                  ),
+                );
+              },
+              child: const Text('Skip'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _startTour();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+              child: const Text('Start Tour', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _startTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenTour', true);
+
+    Widget _tourContent(String emoji, String title, String description) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryBlue.withOpacity(0.92),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$emoji $title', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(description, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4)),
+          ],
+        ),
+      );
+    }
+
+    final targets = [
+      TargetFocus(
+        identify: 'search',
+        keyTarget: _searchKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _tourContent('🔍', 'Search', 'Search for skills or users to find your perfect match.'),
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'profileBanner',
+        keyTarget: _profileBannerKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _tourContent('✨', 'Complete Your Profile', 'Add your skills to get better and more personalized matches.'),
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'list',
+        keyTarget: _listKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _tourContent('🤝', 'Suggested Matches', 'Here you can see users that match your skills. Tap to view their profile.'),
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'nav',
+        keyTarget: _navKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _tourContent('🧭', 'Navigation', 'Use the bottom bar to navigate between Home, Matches and your Profile.'),
+          ),
+        ],
+      ),
+    ];
+
+    if (!mounted) return;
+
+    TutorialCoachMark(
+      targets: targets,
+      colorShadow: Colors.black,
+      opacityShadow: 0.8,
+      onFinish: () {},
+      onSkip: () => true,
+    ).show(context: context);
   }
 
   Future<void> _initAiPreference() async {
@@ -73,22 +207,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: 16),
               Text(
                 'How do you want to discover?',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               Text(
                 'AI mode finds the best matches based on your skills. You can change this anytime in your profile.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.white54 : Colors.black54,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 14, color: isDark ? Colors.white54 : Colors.black54, height: 1.5),
               ),
               const SizedBox(height: 28),
               Row(
@@ -229,18 +355,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _aiEnabled
-                          ? AppColors.primaryBlue.withOpacity(0.15)
-                          : (isDark ? Colors.white12 : Colors.black12),
+                      color: _aiEnabled ? AppColors.primaryBlue.withOpacity(0.15) : (isDark ? Colors.white12 : Colors.black12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 16,
-                          color: _aiEnabled ? AppColors.primaryBlue : (isDark ? Colors.white38 : Colors.black38),
-                        ),
+                        Icon(Icons.auto_awesome_rounded, size: 16,
+                            color: _aiEnabled ? AppColors.primaryBlue : (isDark ? Colors.white38 : Colors.black38)),
                         const SizedBox(width: 6),
                         Text(
                           _aiEnabled ? 'AI On' : 'AI Off',
@@ -267,6 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: 24),
               TextField(
+                key: _searchKey,
                 controller: searchController,
                 style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                 onSubmitted: _onSearchSubmitted,
@@ -289,30 +411,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: 24),
               Container(
+                key: _profileBannerKey,
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1E293B).withOpacity(0.85)
-                      : Colors.white.withOpacity(0.9),
+                  color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(isDark ? 0.12 : 0.08),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: AppColors.primaryBlue.withOpacity(isDark ? 0.12 : 0.08), blurRadius: 24, offset: const Offset(0, 10))],
                 ),
                 child: Row(
                   children: [
                     Container(
                       width: 52,
                       height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppColors.primaryBlueGradient,
-                      ),
+                      decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppColors.primaryBlueGradient),
                       child: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
                     ),
                     const SizedBox(width: 16),
@@ -320,23 +432,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Complete your profile',
-                            style: TextStyle(
-                              color: isDark ? AppColors.textColor : Colors.black87,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                          Text('Complete your profile',
+                              style: TextStyle(color: isDark ? AppColors.textColor : Colors.black87, fontSize: 17, fontWeight: FontWeight.w800)),
                           const SizedBox(height: 6),
-                          Text(
-                            'Add your skills to get better matches.',
-                            style: TextStyle(
-                              color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                          ),
+                          Text('Add your skills to get better matches.',
+                              style: TextStyle(color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor, fontSize: 13, height: 1.4)),
                         ],
                       ),
                     ),
@@ -350,24 +450,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: 30),
               Row(
+                key: _listKey,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _aiEnabled ? 'AI Recommendations' : 'Suggested Matches',
-                    style: TextStyle(
-                      color: isDark ? AppColors.textColor : Colors.black87,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
+                    style: TextStyle(color: isDark ? AppColors.textColor : Colors.black87, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3),
                   ),
                   Text(
                     _aiEnabled ? 'Personalized' : 'Random',
-                    style: TextStyle(
-                      color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: isDark ? AppColors.subtitleDarkColor : AppColors.subtitleBrightColor, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -386,6 +478,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        key: _navKey,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,

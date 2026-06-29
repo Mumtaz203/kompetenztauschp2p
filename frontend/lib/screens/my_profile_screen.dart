@@ -5,6 +5,8 @@ import '../models/user/user_model.dart';
 import '../providers/service_providers.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_bottom_nav.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class MyProfileScreen extends ConsumerStatefulWidget {
   const MyProfileScreen({super.key});
@@ -120,6 +122,8 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     if (confirm == true) {
       try {
         await ref.read(authServiceProvider).logout();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('hasSeenTour');
       } catch (e) {
         debugPrint('Logout error: $e');
       }
