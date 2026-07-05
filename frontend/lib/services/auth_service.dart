@@ -6,11 +6,19 @@ import '../models/auth/auth_response_model.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
+  static const String _configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
+
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080';  // Docker port
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl;
     }
-    return 'http://10.0.2.2:8081';   // Android emulator
+
+    if (kIsWeb) {
+      final host = Uri.base.host.isEmpty ? 'localhost' : Uri.base.host;
+      return 'http://$host:8080';
+    }
+
+    return 'http://10.0.2.2:8080';
   }
 
   static const String _jwtTokenKey = 'jwt_token';
