@@ -51,6 +51,12 @@ Frontend should connect to:
 http://localhost:8080
 ```
 
+If you need a different backend URL, pass it at startup:
+
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8081
+```
+
 ## Full Development Flow
 
 ```
@@ -81,7 +87,7 @@ PostgreSQL (Docker)
 
 ### CORS
 
-Already enabled in backend.
+Already enabled in backend. Restart Quarkus after changing CORS settings.
 
 
 ## 2. Docker Mode (OPTIONAL)

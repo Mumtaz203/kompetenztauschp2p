@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user/user_model.dart';
 import 'package:flutter/material.dart';
 import '../models/matching/discover_user_model.dart';
+import 'auth_service.dart';
 
 class MatchingService {
-  static const String baseUrl = 'http://10.0.2.2:8081';
+  static String baseUrl = AuthService.baseUrl;
 
 
   Future<List<UserModel>> searchUsersBySkill(String skill) async {
