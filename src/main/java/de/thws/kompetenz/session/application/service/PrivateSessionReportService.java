@@ -57,6 +57,14 @@ public class PrivateSessionReportService implements ICreatePrivateSessionReportU
             throw new IllegalArgumentException("Both users must be participants of this session");
         }
 
+        if (reportRepositoryPort.existsBySessionIdAndReporterUserIdAndReportedUserId(
+                sessionId,
+                reporterUserId,
+                reportedUserId
+        )) {
+            throw new IllegalArgumentException("You have already reported this user for this session");
+        }
+
         PrivateSessionReport savedReport = reportRepositoryPort.save(
                 PrivateSessionReport.create(sessionId, reporterUserId, reportedUserId, reasonCode, description)
         );
@@ -83,5 +91,18 @@ public class PrivateSessionReportService implements ICreatePrivateSessionReportU
         }
 
         return reportRepositoryPort.findBySessionId(sessionId);
+    }
+
+    @Override
+    public boolean hasReportFromUser(UUID sessionId, UUID reporterUserId, UUID reportedUserId) {
+        if (sessionId == null || reporterUserId == null || reportedUserId == null) {
+            throw new IllegalArgumentException("Session id, reporter id and reported id must not be null");
+        }
+
+        return reportRepositoryPort.existsBySessionIdAndReporterUserIdAndReportedUserId(
+                sessionId,
+                reporterUserId,
+                reportedUserId
+        );
     }
 }

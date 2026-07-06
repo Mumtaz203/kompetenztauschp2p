@@ -17,6 +17,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/sessions")
@@ -54,6 +55,22 @@ public class PrivateSessionReportResource {
         return Response.status(Response.Status.CREATED)
                 .entity(mapper.toResponse(report))
                 .build();
+    }
+
+    @GET
+    @Path("/{sessionId}/private-reports/me/reported-users/{reportedUserId}")
+    @RolesAllowed("USER")
+    public Response hasCurrentUserReported(
+            @PathParam("sessionId") UUID sessionId,
+            @PathParam("reportedUserId") UUID reportedUserId
+    ) {
+        boolean reported = getPrivateSessionReportsUseCase.hasReportFromUser(
+                sessionId,
+                authorizationGuard.currentUserId(),
+                reportedUserId
+        );
+
+        return Response.ok(Map.of("reported", reported)).build();
     }
 
     @GET

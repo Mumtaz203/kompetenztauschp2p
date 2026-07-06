@@ -53,4 +53,74 @@ class SessionService {
       throw Exception('Connection Error: $e');
     }
   }
+
+  Future<void> createPrivateReport({
+    required String sessionId,
+    required String reportedUserId,
+    required String reasonCode,
+    String? description,
+  }) async {
+    try {
+      final trimmedDescription = description?.trim();
+      final response = await http.post(
+        Uri.parse('$baseUrl/sessions/$sessionId/private-reports'),
+        headers: await _headers(),
+        body: jsonEncode({
+          'reportedUserId': reportedUserId,
+          'reasonCode': reasonCode,
+          if (trimmedDescription != null && trimmedDescription.isNotEmpty)
+            'description': trimmedDescription,
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        final message = _extractErrorMessage(response.body);
+        throw Exception(message ?? 'Report failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<bool> hasPrivateReport({
+    required String sessionId,
+    required String reportedUserId,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/sessions/$sessionId/private-reports/me/reported-users/$reportedUserId',
+        ),
+        headers: await _headers(),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded['reported'] == true;
+        }
+      }
+
+      throw Exception('Report status failed: ${response.statusCode}');
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  String? _extractErrorMessage(String body) {
+    if (body.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded['message']?.toString() ??
+            decoded['error']?.toString() ??
+            decoded['details']?.toString();
+      }
+    } catch (_) {
+      return body;
+    }
+
+    return null;
+  }
 }

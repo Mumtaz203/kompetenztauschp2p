@@ -69,6 +69,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
       if (selectedFilter == 'withSkills' && !hasSkills) return false;
       if (selectedFilter == 'withoutSkills' && hasSkills) return false;
+      if (selectedFilter == 'flagged' && !user.internallyFlagged) {
+        return false;
+      }
 
       if (query.isEmpty) return true;
 
@@ -82,6 +85,38 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
       return searchableText.contains(query);
     }).toList();
+  }
+
+  Future<void> _setInternalFlag(UserModel user, bool value) async {
+    try {
+      final updatedUser = await ref
+          .read(adminServiceProvider)
+          .updateUserInternalFlag(userId: user.id, internallyFlagged: value);
+
+      if (!mounted) return;
+
+      setState(() {
+        users = users
+            .map((item) => item.id == updatedUser.id ? updatedUser : item)
+            .toList();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value ? 'User flagged.' : 'User unflagged.'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   Future<void> _showDeleteDialog(BuildContext context, UserModel user) async {
@@ -139,10 +174,12 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   }
 
   void _openUserDetails(UserModel user) {
-    final offered =
-    user.offeredSkills.isEmpty ? ['No offered skills'] : user.offeredSkills;
-    final wanted =
-    user.wantedSkills.isEmpty ? ['No wanted skills'] : user.wantedSkills;
+    final offered = user.offeredSkills.isEmpty
+        ? ['No offered skills']
+        : user.offeredSkills;
+    final wanted = user.wantedSkills.isEmpty
+        ? ['No wanted skills']
+        : user.wantedSkills;
 
     showModalBottomSheet(
       context: context,
@@ -160,7 +197,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: AppColors.primaryGreen.withOpacity(0.14),
+                        backgroundColor: AppColors.primaryGreen.withOpacity(
+                          0.14,
+                        ),
                         child: Text(
                           user.username.isNotEmpty
                               ? user.username[0].toUpperCase()
@@ -189,9 +228,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                             const SizedBox(height: 3),
                             Text(
                               user.email.isEmpty ? 'No email' : user.email,
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ],
                         ),
@@ -200,6 +237,41 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   ),
 
                   const SizedBox(height: 22),
+
+                  if (user.internallyFlagged) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.redAccent.withOpacity(0.28),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              user.warningMessage.isEmpty
+                                  ? 'This user is internally flagged.'
+                                  : user.warningMessage,
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
 
                   _detailTitle('User ID'),
                   SelectableText(user.id),
@@ -232,6 +304,39 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(sheetContext);
+                        _setInternalFlag(user, !user.internallyFlagged);
+                      },
+                      icon: Icon(
+                        user.internallyFlagged
+                            ? Icons.flag_circle_outlined
+                            : Icons.flag_outlined,
+                      ),
+                      label: Text(
+                        user.internallyFlagged
+                            ? 'Remove Internal Flag'
+                            : 'Flag User Internally',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: user.internallyFlagged
+                            ? Colors.grey
+                            : Colors.redAccent,
+                        side: BorderSide(
+                          color: user.internallyFlagged
+                              ? Colors.grey
+                              : Colors.redAccent,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
                         _showDeleteDialog(context, user);
                       },
                       icon: const Icon(Icons.delete_outline),
@@ -255,17 +360,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   Widget _detailTitle(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        fontWeight: FontWeight.w900,
-        fontSize: 15,
-      ),
+      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
     );
   }
 
-  Widget _skillWrap({
-    required List<String> skills,
-    required Color color,
-  }) {
+  Widget _skillWrap({required List<String> skills, required Color color}) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -307,9 +406,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         decoration: BoxDecoration(
           color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: color.withOpacity(0.22),
-          ),
+          border: Border.all(color: color.withOpacity(0.22)),
         ),
         child: Column(
           children: [
@@ -339,10 +436,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     );
   }
 
-  Widget _filterChip({
-    required String label,
-    required String value,
-  }) {
+  Widget _filterChip({required String label, required String value}) {
     final selected = selectedFilter == value;
 
     return ChoiceChip(
@@ -368,9 +462,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 1.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () => _openUserDetails(user),
@@ -418,21 +510,48 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.grey,
-                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.grey),
                 ],
               ),
+
+              if (user.internallyFlagged) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.redAccent,
+                        size: 16,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Internally flagged',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 12),
 
               Text(
                 'ID: ${_short(user.id)}',
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
 
               const SizedBox(height: 12),
@@ -441,10 +560,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                 if (user.offeredSkills.isNotEmpty) ...[
                   const Text(
                     'Teaches',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
                   _skillWrap(
@@ -456,10 +572,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                 if (user.wantedSkills.isNotEmpty) ...[
                   const Text(
                     'Wants to learn',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
                   _skillWrap(
@@ -498,20 +611,19 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final visibleUsers = filteredUsers;
     final usersWithSkills = users
-        .where((user) =>
-    user.offeredSkills.isNotEmpty || user.wantedSkills.isNotEmpty)
+        .where(
+          (user) =>
+              user.offeredSkills.isNotEmpty || user.wantedSkills.isNotEmpty,
+        )
         .length;
-    final usersWithoutSkills = users.length - usersWithSkills;
+    final flaggedUsers = users.where((user) => user.internallyFlagged).length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('User Management'),
         centerTitle: true,
         actions: [
-          IconButton(
-            onPressed: loadUsers,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: loadUsers, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: ListView(
@@ -554,10 +666,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               ),
               const SizedBox(width: 10),
               _statCard(
-                title: 'No Skills',
-                value: usersWithoutSkills.toString(),
-                icon: Icons.person_off_outlined,
-                color: Colors.orange,
+                title: 'Flagged',
+                value: flaggedUsers.toString(),
+                icon: Icons.warning_amber_rounded,
+                color: Colors.redAccent,
               ),
             ],
           ),
@@ -585,6 +697,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               _filterChip(label: 'All', value: 'all'),
               _filterChip(label: 'With Skills', value: 'withSkills'),
               _filterChip(label: 'No Skills', value: 'withoutSkills'),
+              _filterChip(label: 'Flagged', value: 'flagged'),
             ],
           ),
 
@@ -596,27 +709,24 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (errorMessage != null)
-            _AdminErrorBox(
-              message: errorMessage!,
-              onRetry: loadUsers,
-            )
+            _AdminErrorBox(message: errorMessage!, onRetry: loadUsers)
           else if (visibleUsers.isEmpty)
-              const _AdminEmptyBox()
-            else ...[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    '${visibleUsers.length} user(s) found',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.subtitleDarkColor
-                          : AppColors.subtitleBrightColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+            const _AdminEmptyBox()
+          else ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                '${visibleUsers.length} user(s) found',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.subtitleDarkColor
+                      : AppColors.subtitleBrightColor,
+                  fontWeight: FontWeight.w700,
                 ),
-                ...visibleUsers.map(_userCard),
-              ],
+              ),
+            ),
+            ...visibleUsers.map(_userCard),
+          ],
 
           const SizedBox(height: 20),
         ],
@@ -629,33 +739,22 @@ class _AdminErrorBox extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _AdminErrorBox({
-    required this.message,
-    required this.onRetry,
-  });
+  const _AdminErrorBox({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       color: Colors.redAccent.withOpacity(0.12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             const Icon(Icons.error_outline, color: Colors.redAccent),
             const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onRetry,
-              child: const Text('Try Again'),
-            ),
+            ElevatedButton(onPressed: onRetry, child: const Text('Try Again')),
           ],
         ),
       ),
@@ -671,9 +770,7 @@ class _AdminEmptyBox extends StatelessWidget {
     return const Card(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Center(
-          child: Text('No users found.'),
-        ),
+        child: Center(child: Text('No users found.')),
       ),
     );
   }

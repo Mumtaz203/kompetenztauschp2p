@@ -7,12 +7,19 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "private_session_report")
+@Table(
+        name = "private_session_report",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_private_session_report_once_per_pair",
+                columnNames = {"session_id", "reporter_user_id", "reported_user_id"}
+        )
+)
 public class PrivateSessionReportEntity {
 
     @Id
