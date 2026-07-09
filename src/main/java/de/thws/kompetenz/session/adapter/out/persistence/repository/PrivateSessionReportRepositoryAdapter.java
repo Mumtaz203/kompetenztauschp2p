@@ -46,6 +46,19 @@ public class PrivateSessionReportRepositoryAdapter implements PrivateSessionRepo
     }
 
     @Override
+    public boolean existsBySessionIdAndReporterUserIdAndReportedUserId(
+            UUID sessionId,
+            UUID reporterUserId,
+            UUID reportedUserId
+    ) {
+        return repository.existsBySessionIdAndReporterUserIdAndReportedUserId(
+                sessionId,
+                reporterUserId,
+                reportedUserId
+        );
+    }
+
+    @Override
     public long countByReportedUserId(UUID reportedUserId) {
         return repository.countByReportedUserId(reportedUserId);
     }

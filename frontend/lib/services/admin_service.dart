@@ -5,6 +5,7 @@ import '../models/user/user_model.dart';
 import '../models/chatting/message_model.dart';
 import '../models/chatting/conversation_model.dart';
 import '../models/matching/match_request_model.dart';
+import '../models/session/private_session_report_model.dart';
 import 'auth_service.dart';
 
 class AdminService {
@@ -18,16 +19,29 @@ class AdminService {
   }
 
   void _handleError(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    if (response.statusCode == 401) throw Exception('Unauthorized. Please login again.');
-    if (response.statusCode == 403) throw Exception('You are not allowed to perform this action.');
-    if (response.statusCode == 404) throw Exception('Resource not found.');
-    throw Exception('Request failed. Status code: ${response.statusCode}. ${response.body}');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    if (response.statusCode == 401) {
+      throw Exception('Unauthorized. Please login again.');
+    }
+    if (response.statusCode == 403) {
+      throw Exception('You are not allowed to perform this action.');
+    }
+    if (response.statusCode == 404) {
+      throw Exception('Resource not found.');
+    }
+    throw Exception(
+      'Request failed. Status code: ${response.statusCode}. ${response.body}',
+    );
   }
 
   Future<http.Response> _get(String path) async {
     final token = await AuthService.getStoredToken();
-    final response = await http.get(Uri.parse('$baseUrl$path'), headers: _headers(token));
+    final response = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: _headers(token),
+    );
     _handleError(response);
     return response;
   }
@@ -54,7 +68,10 @@ class AdminService {
     return response;
   }
 
-  Future<http.Response> _patch(String path, {Map<String, dynamic>? body}) async {
+  Future<http.Response> _patch(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final token = await AuthService.getStoredToken();
     final response = await http.patch(
       Uri.parse('$baseUrl$path'),
@@ -67,7 +84,10 @@ class AdminService {
 
   Future<http.Response> _delete(String path) async {
     final token = await AuthService.getStoredToken();
-    final response = await http.delete(Uri.parse('$baseUrl$path'), headers: _headers(token));
+    final response = await http.delete(
+      Uri.parse('$baseUrl$path'),
+      headers: _headers(token),
+    );
     _handleError(response);
     return response;
   }
@@ -79,8 +99,9 @@ class AdminService {
     print('ADMIN GET ALL USERS BODY: ${response.body}');
 
     final data = jsonDecode(response.body);
-    final rawUsers =
-    data is Map && data.containsKey('users') ? data['users'] : data;
+    final rawUsers = data is Map && data.containsKey('users')
+        ? data['users']
+        : data;
 
     if (rawUsers is List) {
       return rawUsers
@@ -93,6 +114,18 @@ class AdminService {
 
   Future<void> deleteUser(String userId) async {
     await _delete('/users/deleteUser/$userId');
+  }
+
+  Future<UserModel> updateUserInternalFlag({
+    required String userId,
+    required bool internallyFlagged,
+  }) async {
+    final response = await _patch(
+      '/users/admin/$userId/internal-flag',
+      body: {'internallyFlagged': internallyFlagged},
+    );
+
+    return UserModel.fromJson(jsonDecode(response.body));
   }
 
   Future<List<MessageModel>> getAllMessages() async {
@@ -109,8 +142,13 @@ class AdminService {
       }
     }
 
-    final uniqueMessages = {for (final msg in allMessages) msg.id: msg}.values.toList();
-    uniqueMessages.sort((a, b) => (b.sentAt ?? DateTime.now()).compareTo(a.sentAt ?? DateTime.now()));
+    final uniqueMessages = {
+      for (final msg in allMessages) msg.id: msg,
+    }.values.toList();
+    uniqueMessages.sort(
+      (a, b) =>
+          (b.sentAt ?? DateTime.now()).compareTo(a.sentAt ?? DateTime.now()),
+    );
     return uniqueMessages;
   }
 
@@ -123,7 +161,9 @@ class AdminService {
     return MessageModel.fromJson(jsonDecode(response.body));
   }
 
-  Future<List<MessageModel>> getMessagesByConversationId(String conversationId) async {
+  Future<List<MessageModel>> getMessagesByConversationId(
+    String conversationId,
+  ) async {
     final response = await _get('/messages/conversation/$conversationId');
     final List<dynamic> data = jsonDecode(response.body);
     return data.map((msg) => MessageModel.fromJson(msg)).toList();
@@ -162,7 +202,9 @@ class AdminService {
     final token = await AuthService.getStoredToken();
 
     final response = await http.get(
-      Uri.parse('$baseUrl/conversations/between?user1Id=$user1Id&user2Id=$user2Id'),
+      Uri.parse(
+        '$baseUrl/conversations/between?user1Id=$user1Id&user2Id=$user2Id',
+      ),
       headers: _headers(token),
     );
 
@@ -193,6 +235,43 @@ class AdminService {
     final response = await _get('/sessions/$sessionId');
     return jsonDecode(response.body);
   }
+
+  Future<List<PrivateSessionReportModel>> getAllPrivateSessionReports() async {
+    final response = await _get('/sessions/admin/private-reports');
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is List) {
+      return decoded
+          .map(
+            (item) => PrivateSessionReportModel.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    }
+
+    return [];
+  }
+
+  Future<List<PrivateSessionReportModel>> getPrivateSessionReportsForSession(
+    String sessionId,
+  ) async {
+    final response = await _get('/sessions/admin/$sessionId/private-reports');
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is List) {
+      return decoded
+          .map(
+            (item) => PrivateSessionReportModel.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    }
+
+    return [];
+  }
+
   Future<List<Map<String, dynamic>>> getAllSessions() async {
     final response = await _get('/sessions/get-all-sessions');
     final decoded = jsonDecode(response.body);
@@ -215,7 +294,9 @@ class AdminService {
   }
 
   Future<Map<String, dynamic>> expireRatingWindow(String sessionId) async {
-    final response = await _patch('/sessions/$sessionId/expire-rating-window-temp-testing');
+    final response = await _patch(
+      '/sessions/$sessionId/expire-rating-window-temp-testing',
+    );
     return jsonDecode(response.body);
   }
 
@@ -224,7 +305,9 @@ class AdminService {
     return jsonDecode(response.body);
   }
 
-  Future<Map<String, dynamic>?> getSessionByMatchRequestId(String matchingRequestId) async {
+  Future<Map<String, dynamic>?> getSessionByMatchRequestId(
+    String matchingRequestId,
+  ) async {
     final token = await AuthService.getStoredToken();
 
     final response = await http.get(
@@ -254,17 +337,21 @@ class AdminService {
     required String receiverId,
     required String status,
   }) async {
-    await _patch('/match-requests/updateMatchRequest/$requestId', body: {
-      'id': requestId,
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'status': status,
-    });
+    await _patch(
+      '/match-requests/updateMatchRequest/$requestId',
+      body: {
+        'id': requestId,
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'status': status,
+      },
+    );
   }
 
   Future<void> deleteMatchRequest(String requestId) async {
     await _delete('/match-requests/deleteMatchRequest/$requestId');
   }
+
   Future<List<Map<String, dynamic>>> getAllRatings() async {
     final response = await _get('/ratings/get-all-ratings');
     final decoded = jsonDecode(response.body);
@@ -277,6 +364,7 @@ class AdminService {
 
     return [];
   }
+
   Future<List<MatchRequestModel>> getAllVisibleMatchRequestsForAdmin({
     List<UserModel>? users,
   }) async {
@@ -323,6 +411,7 @@ class AdminService {
 
     return requests;
   }
+
   Future<List<Map<String, dynamic>>> getPublishedRatings() async {
     final response = await _get('/ratings/admin/published-ratings');
     final decoded = jsonDecode(response.body);
@@ -373,12 +462,8 @@ class AdminService {
   }) async {
     final response = await _patch(
       '/ratings/admin/$ratingId/status',
-      body: {
-        'status': status,
-      },
+      body: {'status': status},
     );
-
-    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
 
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }

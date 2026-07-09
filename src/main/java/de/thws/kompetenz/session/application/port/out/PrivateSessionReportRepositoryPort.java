@@ -13,5 +13,11 @@ public interface PrivateSessionReportRepositoryPort {
 
     List<PrivateSessionReport> findBySessionId(UUID sessionId);
 
+    boolean existsBySessionIdAndReporterUserIdAndReportedUserId(
+            UUID sessionId,
+            UUID reporterUserId,
+            UUID reportedUserId
+    );
+
     long countByReportedUserId(UUID reportedUserId);
 }

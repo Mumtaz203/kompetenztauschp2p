@@ -5,8 +5,10 @@ import '../models/matching/match_request_model.dart';
 import '../models/session/session_model.dart';
 import '../models/rating/create_rating_request_model.dart';
 import '../services/auth_service.dart';
+import '../services/session_report_status_store.dart';
 import '../providers/service_providers.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/session_report_dialog.dart';
 import '../core/app_colors.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
@@ -23,6 +25,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 
   List<Map<String, dynamic>> requestsData = [];
   List<Map<String, dynamic>> matchesData = [];
+  Set<String> reportedSessionUserKeys = {};
 
   @override
   void initState() {
@@ -49,13 +52,19 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       final userService = ref.read(userServiceProvider);
       final sessionService = ref.read(sessionServiceProvider);
 
-      final incomingRequests = await matchRequestService.getIncomingRequests(currentUserId);
-      final acceptedMatches = await matchRequestService.getMatches(currentUserId);
+      final incomingRequests = await matchRequestService.getIncomingRequests(
+        currentUserId,
+      );
+      final acceptedMatches = await matchRequestService.getMatches(
+        currentUserId,
+      );
 
       List<Map<String, dynamic>> tempRequests = [];
       for (var req in incomingRequests) {
         try {
-          final user = await userService.getUserProfileById(userId: req.senderId);
+          final user = await userService.getUserProfileById(
+            userId: req.senderId,
+          );
           tempRequests.add({'request': req, 'user': user});
         } catch (e) {
           final fallbackUser = UserModel(
@@ -70,14 +79,44 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       }
 
       List<Map<String, dynamic>> tempMatches = [];
+      final tempReportedKeys = <String>{};
       for (var match in acceptedMatches) {
         try {
-          final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
+          final otherId = match.senderId == currentUserId
+              ? match.receiverId
+              : match.senderId;
           final user = await userService.getUserProfileById(userId: otherId);
-          final session = await sessionService.getSessionByMatchRequestId(match.id);
+          final session = await sessionService.getSessionByMatchRequestId(
+            match.id,
+          );
+          var hasReported = false;
+          try {
+            hasReported = await sessionService.hasPrivateReport(
+              sessionId: session.id,
+              reportedUserId: otherId,
+            );
+            if (hasReported) {
+              await SessionReportStatusStore.markReported(
+                reporterUserId: currentUserId,
+                sessionId: session.id,
+                reportedUserId: otherId,
+              );
+            }
+          } catch (_) {
+            hasReported = await SessionReportStatusStore.hasReported(
+              reporterUserId: currentUserId,
+              sessionId: session.id,
+              reportedUserId: otherId,
+            );
+          }
+          if (hasReported) {
+            tempReportedKeys.add(_reportKey(session.id, otherId));
+          }
           tempMatches.add({'request': match, 'user': user, 'session': session});
         } catch (e) {
-          final otherId = match.senderId == currentUserId ? match.receiverId : match.senderId;
+          final otherId = match.senderId == currentUserId
+              ? match.receiverId
+              : match.senderId;
           final fallbackUser = UserModel(
             id: otherId,
             username: 'Unknown User',
@@ -93,6 +132,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       setState(() {
         requestsData = tempRequests;
         matchesData = tempMatches;
+        reportedSessionUserKeys = tempReportedKeys;
         isLoading = false;
       });
     } catch (e) {
@@ -104,12 +144,21 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
     }
   }
 
+  String _reportKey(String sessionId, String reportedUserId) {
+    return '$sessionId:$reportedUserId';
+  }
+
   Future<void> _handleAccept(String requestId) async {
     try {
-      await ref.read(matchRequestServiceProvider).acceptRequest(requestId, currentUserId);
+      await ref
+          .read(matchRequestServiceProvider)
+          .acceptRequest(requestId, currentUserId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request Accepted!'), backgroundColor: AppColors.primaryGreen),
+        const SnackBar(
+          content: Text('Request Accepted!'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
       );
       loadData();
     } catch (e) {
@@ -122,11 +171,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 
   Future<void> _handleReject(String requestId) async {
     try {
-      await ref.read(matchRequestServiceProvider).rejectRequest(requestId, currentUserId);
+      await ref
+          .read(matchRequestServiceProvider)
+          .rejectRequest(requestId, currentUserId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request Rejected.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Request Rejected.')));
       loadData();
     } catch (e) {
       if (!mounted) return;
@@ -146,19 +197,26 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: Text('Rate ${user.username}', textAlign: TextAlign.center),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Select points:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Select points:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
                       return IconButton(
                         icon: Icon(
-                          index < selectedPoints ? Icons.star_rounded : Icons.star_outline_rounded,
+                          index < selectedPoints
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
                           color: Colors.amber,
                           size: 32,
                         ),
@@ -175,7 +233,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                     controller: commentController,
                     decoration: InputDecoration(
                       hintText: 'Add a comment (optional)',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     maxLines: 3,
                   ),
@@ -188,7 +248,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Cancel'),
@@ -199,7 +261,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () async {
@@ -208,9 +272,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                               sessionId: session.id,
                               receiverUserId: user.id,
                               points: selectedPoints,
-                              comment: commentController.text.isEmpty ? null : commentController.text,
+                              comment: commentController.text.isEmpty
+                                  ? null
+                                  : commentController.text,
                             );
-                            await ref.read(ratingServiceProvider).createRating(request);
+                            await ref
+                                .read(ratingServiceProvider)
+                                .createRating(request);
                             if (!mounted) return;
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -222,11 +290,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                           } catch (e) {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
                             );
                           }
                         },
-                        child: const Text('Send', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Send',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                   ],
@@ -236,6 +310,56 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           },
         );
       },
+    );
+  }
+
+  Future<void> _showReportDialog(SessionModel session, UserModel user) async {
+    final reportKey = _reportKey(session.id, user.id);
+    if (reportedSessionUserKeys.contains(reportKey)) {
+      _showAlreadyReportedSnackBar();
+      return;
+    }
+
+    final result = await showDialog<SessionReportResult>(
+      context: context,
+      builder: (context) => SessionReportDialog(
+        session: session,
+        reportedUserId: user.id,
+        reportedUserName: user.username,
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    if (result == SessionReportResult.submitted ||
+        result == SessionReportResult.alreadyReported) {
+      await SessionReportStatusStore.markReported(
+        reporterUserId: currentUserId,
+        sessionId: session.id,
+        reportedUserId: user.id,
+      );
+      if (!mounted) return;
+      setState(() => reportedSessionUserKeys.add(reportKey));
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result == SessionReportResult.alreadyReported
+              ? 'You already reported this user for this session.'
+              : 'Report sent. Thank you for letting us know.',
+        ),
+        backgroundColor: AppColors.primaryGreen,
+      ),
+    );
+  }
+
+  void _showAlreadyReportedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You already reported this user for this session.'),
+        backgroundColor: Colors.orange,
+      ),
     );
   }
 
@@ -273,7 +397,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Connections', style: TextStyle(fontWeight: FontWeight.w900)),
+          title: const Text(
+            'Connections',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
           centerTitle: true,
           bottom: const TabBar(
             indicatorColor: AppColors.primaryBlue,
@@ -288,13 +415,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
             : errorMessage != null
-            ? Center(child: Text(errorMessage!, style: const TextStyle(color: Colors.redAccent)))
-            : TabBarView(
-          children: [
-            _buildMatchesTab(),
-            _buildRequestsTab(),
-          ],
-        ),
+            ? Center(
+                child: Text(
+                  errorMessage!,
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              )
+            : TabBarView(children: [_buildMatchesTab(), _buildRequestsTab()]),
         bottomNavigationBar: AppBottomNav(
           currentIndex: 1,
           onTap: (index) => _onNavTap(context, index),
@@ -310,7 +437,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_outline, size: 64, color: isDark ? Colors.white24 : Colors.black12),
+            Icon(
+              Icons.people_outline,
+              size: 64,
+              color: isDark ? Colors.white24 : Colors.black12,
+            ),
             const SizedBox(height: 16),
             Text(
               "No matches yet",
@@ -337,12 +468,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         final UserModel user = item['user'];
         final SessionModel? session = item['session'];
         final MatchRequestModel match = item['request'];
+        final hasReported =
+            session != null &&
+            reportedSessionUserKeys.contains(_reportKey(session.id, user.id));
 
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
+            color: isDark
+                ? const Color(0xFF1E293B).withOpacity(0.85)
+                : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
             boxShadow: [
@@ -359,8 +495,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                 radius: 28,
                 backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
                 child: Text(
-                  user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
-                  style: const TextStyle(color: AppColors.primaryBlue, fontSize: 20, fontWeight: FontWeight.w900),
+                  user.username.isNotEmpty
+                      ? user.username[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -389,14 +531,45 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                     if (session != null && session.status == 'RATING_OPEN') ...[
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryGreen.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
                           '⭐ Rate now',
-                          style: TextStyle(color: AppColors.primaryGreen, fontSize: 12, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: AppColors.primaryGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (session != null && session.status == 'DISPUTED') ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (hasReported ? Colors.amber : Colors.redAccent)
+                              .withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          hasReported ? 'Reported by you' : 'Report available',
+                          style: TextStyle(
+                            color: hasReported
+                                ? Colors.amber
+                                : Colors.redAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -407,13 +580,32 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
               Column(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primaryBlue),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: AppColors.primaryBlue,
+                    ),
                     onPressed: () => _openChat(user, match),
                   ),
                   if (session != null && session.status == 'RATING_OPEN')
                     IconButton(
-                      icon: const Icon(Icons.star_rounded, color: AppColors.primaryGreen),
+                      icon: const Icon(
+                        Icons.star_rounded,
+                        color: AppColors.primaryGreen,
+                      ),
                       onPressed: () => _showRatingDialog(session, user),
+                    ),
+                  if (session != null)
+                    IconButton(
+                      tooltip: hasReported
+                          ? 'You already reported this user'
+                          : 'Report problem',
+                      icon: Icon(
+                        Icons.flag_outlined,
+                        color: hasReported ? Colors.amber : Colors.redAccent,
+                      ),
+                      onPressed: hasReported
+                          ? _showAlreadyReportedSnackBar
+                          : () => _showReportDialog(session, user),
                     ),
                 ],
               ),
@@ -431,7 +623,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inbox_outlined, size: 64, color: isDark ? Colors.white24 : Colors.black12),
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: isDark ? Colors.white24 : Colors.black12,
+            ),
             const SizedBox(height: 16),
             Text(
               "No incoming requests",
@@ -462,7 +658,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withOpacity(0.85) : Colors.white.withOpacity(0.95),
+            color: isDark
+                ? const Color(0xFF1E293B).withOpacity(0.85)
+                : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
             boxShadow: [
@@ -482,8 +680,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                     radius: 26,
                     backgroundColor: AppColors.primaryGreen.withOpacity(0.15),
                     child: Text(
-                      user.username.isNotEmpty ? user.username[0].toUpperCase() : '?',
-                      style: const TextStyle(color: AppColors.primaryGreen, fontSize: 18, fontWeight: FontWeight.w900),
+                      user.username.isNotEmpty
+                          ? user.username[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: AppColors.primaryGreen,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -524,7 +728,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.redAccent,
                         side: const BorderSide(color: Colors.redAccent),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () => _handleReject(request.id),
@@ -533,11 +739,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
-                      label: const Text('Accept', style: TextStyle(color: Colors.white)),
+                      icon: const Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'Accept',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () => _handleAccept(request.id),

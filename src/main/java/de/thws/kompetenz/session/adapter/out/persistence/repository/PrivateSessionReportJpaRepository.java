@@ -14,6 +14,19 @@ public class PrivateSessionReportJpaRepository implements PanacheRepositoryBase<
         return list("sessionId = ?1 order by createdAt desc", sessionId);
     }
 
+    public boolean existsBySessionIdAndReporterUserIdAndReportedUserId(
+            UUID sessionId,
+            UUID reporterUserId,
+            UUID reportedUserId
+    ) {
+        return count(
+                "sessionId = ?1 and reporterUserId = ?2 and reportedUserId = ?3",
+                sessionId,
+                reporterUserId,
+                reportedUserId
+        ) > 0;
+    }
+
     public long countByReportedUserId(UUID reportedUserId) {
         return count("reportedUserId = ?1", reportedUserId);
     }

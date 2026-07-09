@@ -10,4 +10,6 @@ public interface IGetPrivateSessionReportsUseCase {
     List<PrivateSessionReport> getAllReports();
 
     List<PrivateSessionReport> getReportsForSession(UUID sessionId);
+
+    boolean hasReportFromUser(UUID sessionId, UUID reporterUserId, UUID reportedUserId);
 }

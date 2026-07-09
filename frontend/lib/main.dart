@@ -17,6 +17,7 @@ import 'screens/admin_conversations_screen.dart';
 import 'screens/admin_match_requests_screen.dart';
 import 'screens/admin_sessions_screen.dart';
 import 'screens/admin_ratings_screen.dart';
+import 'screens/admin_reports_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/settings_screen.dart';
 
@@ -64,10 +65,13 @@ class MyApp extends StatelessWidget {
             '/admin': (context) => const AdminScreen(),
             '/admin-users': (context) => const AdminUsersScreen(),
             '/admin-messages': (context) => const AdminMessagesScreen(),
-            '/admin-conversations': (context) => const AdminConversationsScreen(),
-            '/admin-match-requests': (context) => const AdminMatchRequestsScreen(),
+            '/admin-conversations': (context) =>
+                const AdminConversationsScreen(),
+            '/admin-match-requests': (context) =>
+                const AdminMatchRequestsScreen(),
             '/admin-sessions': (context) => const AdminSessionsScreen(),
             '/admin-ratings': (context) => const AdminRatingsScreen(),
+            '/admin-reports': (context) => const AdminReportsScreen(),
             '/settings': (context) => const SettingsScreen(),
           },
 

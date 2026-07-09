@@ -86,6 +86,52 @@ class PrivateSessionReportServiceTest {
         );
     }
 
+    @Test
+    void createReport_shouldRejectDuplicateReportForSameSessionAndUsers() {
+        InMemoryReportRepository reportRepository = new InMemoryReportRepository(1);
+        PrivateSessionReportService service = new PrivateSessionReportService(
+                reportRepository,
+                new SingleSessionRepository(),
+                new CapturingFlagPort(new AtomicLong(), new AtomicBoolean())
+        );
+
+        service.createReport(
+                sessionId,
+                reporterId,
+                reportedId,
+                PrivateSessionReportReason.NO_SHOW,
+                "First report"
+        );
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                service.createReport(
+                        sessionId,
+                        reporterId,
+                        reportedId,
+                        PrivateSessionReportReason.NO_RESPONSE,
+                        "Second report"
+                )
+        );
+
+        assertEquals("You have already reported this user for this session", exception.getMessage());
+        assertEquals(1, reportRepository.reports.size());
+    }
+
+    @Test
+    void hasReportFromUser_shouldReturnTrue_whenReportExistsForSameSessionAndUsers() {
+        InMemoryReportRepository reportRepository = new InMemoryReportRepository(1);
+        PrivateSessionReportService service = new PrivateSessionReportService(
+                reportRepository,
+                new SingleSessionRepository(),
+                new CapturingFlagPort(new AtomicLong(), new AtomicBoolean())
+        );
+
+        service.createReport(sessionId, reporterId, reportedId, PrivateSessionReportReason.NO_SHOW, null);
+
+        assertTrue(service.hasReportFromUser(sessionId, reporterId, reportedId));
+        assertFalse(service.hasReportFromUser(sessionId, reportedId, reporterId));
+    }
+
     private static class CapturingFlagPort implements ReportedUserFlagPort {
         private final AtomicLong reportCount;
         private final AtomicBoolean flagged;
@@ -190,6 +236,20 @@ class PrivateSessionReportServiceTest {
             return reports.stream()
                     .filter(report -> report.getSessionId().equals(sessionId))
                     .toList();
+        }
+
+        @Override
+        public boolean existsBySessionIdAndReporterUserIdAndReportedUserId(
+                UUID sessionId,
+                UUID reporterUserId,
+                UUID reportedUserId
+        ) {
+            return reports.stream()
+                    .anyMatch(report ->
+                            report.getSessionId().equals(sessionId)
+                                    && report.getReporterUserId().equals(reporterUserId)
+                                    && report.getReportedUserId().equals(reportedUserId)
+                    );
         }
 
         @Override

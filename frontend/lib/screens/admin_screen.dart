@@ -14,6 +14,7 @@ class AdminScreen extends ConsumerStatefulWidget {
 class _AdminScreenState extends ConsumerState<AdminScreen> {
   String userCount = '--';
   String messageCount = '--';
+  String reportCount = '--';
   bool isLoading = true;
 
   @override
@@ -33,11 +34,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
       final users = await adminService.getAllUsers();
       final messages = await adminService.getAllMessages();
+      final reports = await adminService.getAllPrivateSessionReports();
 
       if (mounted) {
         setState(() {
           userCount = users.length.toString();
           messageCount = messages.length.toString();
+          reportCount = reports.length.toString();
           isLoading = false;
         });
       }
@@ -46,6 +49,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         setState(() {
           userCount = 'Error';
           messageCount = 'Error';
+          reportCount = 'Error';
           isLoading = false;
         });
       }
@@ -128,6 +132,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               icon: Icons.verified_user_outlined,
             ),
 
+            const SizedBox(height: 12),
+
+            _AdminStatCard(
+              title: 'Private Reports',
+              value: isLoading ? '...' : reportCount,
+              icon: Icons.flag_outlined,
+            ),
+
             const SizedBox(height: 28),
 
             Text(
@@ -146,7 +158,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'User Management',
               description: 'View users and prepare delete actions.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-users').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-users',
+                ).then((_) => _loadDashboardStats());
               },
             ),
 
@@ -157,7 +172,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'Message Management',
               description: 'View messages and prepare delete actions.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-messages').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-messages',
+                ).then((_) => _loadDashboardStats());
               },
             ),
             const SizedBox(height: 14),
@@ -167,7 +185,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'Conversation Management',
               description: 'View, inspect and delete conversations.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-conversations').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-conversations',
+                ).then((_) => _loadDashboardStats());
               },
             ),
 
@@ -178,7 +199,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'Match Request Management',
               description: 'Update or delete match requests.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-match-requests').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-match-requests',
+                ).then((_) => _loadDashboardStats());
               },
             ),
 
@@ -189,7 +213,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'Session Management',
               description: 'Create sessions and manage rating windows.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-sessions').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-sessions',
+                ).then((_) => _loadDashboardStats());
               },
             ),
 
@@ -200,11 +227,27 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               title: 'Rating Management',
               description: 'View rating summaries and publish ratings.',
               onTap: () {
-                Navigator.pushNamed(context, '/admin-ratings').then((_) => _loadDashboardStats());
+                Navigator.pushNamed(
+                  context,
+                  '/admin-ratings',
+                ).then((_) => _loadDashboardStats());
+              },
+            ),
+
+            const SizedBox(height: 14),
+
+            _AdminNavigationCard(
+              icon: Icons.flag_outlined,
+              title: 'Report Management',
+              description: 'Review private session reports and user flags.',
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  '/admin-reports',
+                ).then((_) => _loadDashboardStats());
               },
             ),
             const SizedBox(height: 24),
-
           ],
         ),
       ),
@@ -242,7 +285,10 @@ class _AdminStatCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(title),
@@ -292,7 +338,10 @@ class _AdminNavigationCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(description),
@@ -307,4 +356,3 @@ class _AdminNavigationCard extends StatelessWidget {
     );
   }
 }
-

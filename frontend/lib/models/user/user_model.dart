@@ -8,6 +8,8 @@ class UserModel {
   final String university;
   final double averagePoints;
   final int ratingCount;
+  final bool internallyFlagged;
+  final String warningMessage;
 
   UserModel({
     required this.id,
@@ -19,6 +21,8 @@ class UserModel {
     this.university = '',
     this.averagePoints = 0.0,
     this.ratingCount = 0,
+    this.internallyFlagged = false,
+    this.warningMessage = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +56,8 @@ class UserModel {
       university: json['university']?.toString() ?? '',
       averagePoints: parseDouble(json['averagePoints']),
       ratingCount: parseInt(json['ratingCount']),
+      internallyFlagged: json['internallyFlagged'] == true,
+      warningMessage: json['warningMessage']?.toString() ?? '',
     );
   }
 
@@ -66,6 +72,8 @@ class UserModel {
       'university': university,
       'averagePoints': averagePoints,
       'ratingCount': ratingCount,
+      'internallyFlagged': internallyFlagged,
+      'warningMessage': warningMessage,
     };
   }
 }
