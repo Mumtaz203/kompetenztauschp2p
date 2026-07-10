@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/custom_gradient_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/animated_glass_logo.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +19,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('remembered_email') ?? '';
+    if (savedEmail.isNotEmpty) {
+      setState(() {
+        emailController.text = savedEmail;
+        rememberMe = true;
+      });
+    }
+  }
 
   Future<void> handleLogin() async {
     final email = emailController.text.trim();
@@ -37,6 +55,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login successful!, welcome back.')),
       );
+      final prefs = await SharedPreferences.getInstance();
+      if (rememberMe) {
+        await prefs.setString('remembered_email', email);
+      } else {
+        await prefs.remove('remembered_email');
+      }
 
       if (authResponse?.role == 'ADMIN') {
         Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
@@ -182,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             const Spacer(),
                             TextButton(
-                              onPressed: () {},
+                              onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,

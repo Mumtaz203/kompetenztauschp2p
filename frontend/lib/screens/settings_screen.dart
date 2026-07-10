@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_colors.dart';
+import '../services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,21 +22,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = await AuthService.getStoredUserId() ?? '';
     setState(() {
-      _aiEnabled = prefs.getBool('ai_enabled') ?? false;
+      _aiEnabled = prefs.getBool('ai_enabled_$userId') ?? false;
       _isDarkMode = AppColors.themeNotifier.value == ThemeMode.dark;
     });
   }
-
   Future<void> _toggleAi(bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('ai_enabled', value);
+    final userId = await AuthService.getStoredUserId() ?? '';
+    await prefs.setBool('ai_enabled_$userId', value);
     setState(() => _aiEnabled = value);
   }
 
   Future<void> _restartTour() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasSeenTour', false);
+    final userId = await AuthService.getStoredUserId() ?? '';
+    await prefs.setBool('hasSeenTour_$userId', false);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

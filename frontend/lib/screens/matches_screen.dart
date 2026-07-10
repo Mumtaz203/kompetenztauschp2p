@@ -60,12 +60,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       );
 
       List<Map<String, dynamic>> tempRequests = [];
-      for (var req in incomingRequests) {
+      final requestFutures = incomingRequests.map((req) async {
         try {
-          final user = await userService.getUserProfileById(
-            userId: req.senderId,
-          );
-          tempRequests.add({'request': req, 'user': user});
+          final user = await userService.getUserProfileById(userId: req.senderId);
+          return {'request': req, 'user': user};
         } catch (e) {
           final fallbackUser = UserModel(
             id: req.senderId,
@@ -74,21 +72,27 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
             offeredSkills: ['Hidden'],
             wantedSkills: ['Hidden'],
           );
-          tempRequests.add({'request': req, 'user': fallbackUser});
+          return {'request': req, 'user': fallbackUser};
         }
-      }
+      }).toList();
+
+      tempRequests = await Future.wait(requestFutures);
 
       List<Map<String, dynamic>> tempMatches = [];
       final tempReportedKeys = <String>{};
-      for (var match in acceptedMatches) {
+
+      final matchFutures = acceptedMatches.map((match) async {
         try {
           final otherId = match.senderId == currentUserId
               ? match.receiverId
               : match.senderId;
-          final user = await userService.getUserProfileById(userId: otherId);
-          final session = await sessionService.getSessionByMatchRequestId(
-            match.id,
-          );
+          final results = await Future.wait([
+            userService.getUserProfileById(userId: otherId),
+            sessionService.getSessionByMatchRequestId(match.id),
+          ]);
+          final user = results[0] as UserModel;
+          final session = results[1] as SessionModel;
+
           var hasReported = false;
           try {
             hasReported = await sessionService.hasPrivateReport(
@@ -112,7 +116,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
           if (hasReported) {
             tempReportedKeys.add(_reportKey(session.id, otherId));
           }
-          tempMatches.add({'request': match, 'user': user, 'session': session});
+          return {'request': match, 'user': user, 'session': session};
         } catch (e) {
           final otherId = match.senderId == currentUserId
               ? match.receiverId
@@ -124,9 +128,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
             offeredSkills: [],
             wantedSkills: [],
           );
-          tempMatches.add({'request': match, 'user': fallbackUser});
+          return {'request': match, 'user': fallbackUser};
         }
-      }
+      }).toList();
+
+      tempMatches = await Future.wait(matchFutures);
 
       if (!mounted) return;
       setState(() {
@@ -289,12 +295,20 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                             );
                           } catch (e) {
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: $e'),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                            Navigator.pop(context);
+                            final errorStr = e.toString().toLowerCase();
+                            if (errorStr.contains('already rated')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('You have already rated this user for this session.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                              );
+                            }
                           }
                         },
                         child: const Text(
@@ -432,7 +446,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
 
   Widget _buildMatchesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (matchesData.isEmpty) {
+    final filteredMatches = matchesData.where((item) {
+      final SessionModel? session = item['session'];
+      if (session == null) return true;
+      return session.status != 'CANCELLED';
+    }).toList();
+
+    if (filteredMatches.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -462,9 +482,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: matchesData.length,
+      itemCount: filteredMatches.length,
       itemBuilder: (context, index) {
-        final item = matchesData[index];
+        final item = filteredMatches[index];
         final UserModel user = item['user'];
         final SessionModel? session = item['session'];
         final MatchRequestModel match = item['request'];

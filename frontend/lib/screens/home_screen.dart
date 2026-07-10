@@ -41,7 +41,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkAndStartTour() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasSeenTour = prefs.getBool('hasSeenTour') ?? false;
+    final userId = await AuthService.getStoredUserId() ?? '';
+    final hasSeenTour = prefs.getBool('hasSeenTour_$userId') ?? false;
     if (!hasSeenTour && mounted) {
       await Future.delayed(const Duration(milliseconds: 800));
       _showTourDialog();
@@ -65,7 +66,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onPressed: () async {
                 Navigator.pop(context);
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('hasSeenTour', true);
+                final userId = await AuthService.getStoredUserId() ?? '';
+                await prefs.setBool('hasSeenTour_$userId', true);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -91,7 +93,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _startTour() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasSeenTour', true);
+    final userId = await AuthService.getStoredUserId() ?? '';
+    await prefs.setBool('hasSeenTour_$userId', true);
 
     Widget _tourContent(String emoji, String title, String description) {
       return Container(
@@ -168,13 +171,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _initAiPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final isFirstLaunch = prefs.getBool('discover_mode_set') ?? false;
+    final userId = await AuthService.getStoredUserId() ?? '';
+    final isFirstLaunch = prefs.getBool('discover_mode_set_$userId') ?? false;
 
     if (!isFirstLaunch) {
       if (!mounted) return;
       await _showAiBottomSheet();
     } else {
-      _aiEnabled = prefs.getBool('ai_enabled') ?? false;
+      _aiEnabled = prefs.getBool('ai_enabled_$userId') ?? false;
       await _loadUsers();
     }
   }
@@ -250,8 +254,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     ).then((value) async {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('discover_mode_set', true);
-      await prefs.setBool('ai_enabled', value ?? false);
+      final userId = await AuthService.getStoredUserId() ?? '';
+      await prefs.setBool('discover_mode_set_$userId', true);
+      await prefs.setBool('ai_enabled_$userId', value ?? false);
       _aiEnabled = value ?? false;
       await _loadUsers();
     });
