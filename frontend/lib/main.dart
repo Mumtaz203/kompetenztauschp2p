@@ -20,6 +20,7 @@ import 'screens/admin_ratings_screen.dart';
 import 'screens/admin_reports_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/settings_screen.dart';
+import 'screens/forgot_password_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -73,6 +74,7 @@ class MyApp extends StatelessWidget {
             '/admin-ratings': (context) => const AdminRatingsScreen(),
             '/admin-reports': (context) => const AdminReportsScreen(),
             '/settings': (context) => const SettingsScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
           },
 
           onGenerateRoute: (settings) {

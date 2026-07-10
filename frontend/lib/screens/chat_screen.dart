@@ -35,6 +35,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool isLoading = true;
   bool isSending = false;
 
+  bool _showSessionBanner = false;
+  String? _pendingSessionId;
+
   String chatPartnerName = 'Chat';
   String conversationId = '';
   String currentUserId = '';
@@ -173,25 +176,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
   }
-
   void _checkSessionCompletion(SessionModel session) {
-    if (session.status != 'ACTIVE' &&
-        session.status != 'COMPLETION_CONFIRMATION_PENDING') {
-      return;
-    }
+    if (session.status != 'ACTIVE' && session.status != 'COMPLETION_CONFIRMATION_PENDING') return;
 
     final now = DateTime.now();
     final difference = now.difference(session.createdAt).inDays;
 
     if (difference >= 3 && mounted) {
-      _showCompletionDialog(session.id);
+      setState(() {
+        _showSessionBanner = true;
+        _pendingSessionId = session.id;
+      });
     }
   }
 
   Future<void> _showCompletionDialog(String sessionId) async {
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
@@ -543,6 +545,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               },
                             ),
                     ),
+                    if (_showSessionBanner && _pendingSessionId != null)
+                      _SessionCompletionBanner(
+                        isDark: isDark,
+                        onLetUsKnow: () async {
+                          await _showCompletionDialog(_pendingSessionId!);
+                          if (mounted) {
+                            setState(() => _showSessionBanner = false);
+                          }
+                        },
+                      ),
                     _MessageInputArea(
                       controller: messageController,
                       isDark: isDark,
@@ -848,6 +860,49 @@ class _ErrorState extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SessionCompletionBanner extends StatelessWidget {
+  final bool isDark;
+  final VoidCallback onLetUsKnow;
+
+  const _SessionCompletionBanner({
+    required this.isDark,
+    required this.onLetUsKnow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryBlue.withOpacity(isDark ? 0.16 : 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: AppColors.primaryBlue, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'How did your session go?',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onLetUsKnow,
+            style: TextButton.styleFrom(foregroundColor: AppColors.primaryBlue),
+            child: const Text('Let us know', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }

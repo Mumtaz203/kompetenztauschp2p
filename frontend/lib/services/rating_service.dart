@@ -27,8 +27,10 @@ class RatingService {
       if (response.statusCode == 201) {
         return RatingResponseModel.fromJson(jsonDecode(response.body));
       } else {
-        throw Exception('Fail in Rating Process : ${response.statusCode}');
-      }
+    final body = jsonDecode(response.body);
+    final message = body['message'] ?? body['error'] ?? 'Fail in Rating Process';
+    throw Exception(message);
+    }
     } catch (e) {
       throw Exception('Connection Error: $e');
     }
