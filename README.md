@@ -21,7 +21,9 @@ We use two modes:
 
 Used for daily development.
 
-### Step 1 – Start database (Docker)
+### Step 1 – Start database
+
+Use either your local PostgreSQL on port `5432`, or start the Docker PostgreSQL service. The Docker service is exposed on host port `5433` to avoid conflicts with a local PostgreSQL install.
 
 ```bash
 docker compose up -d postgres
@@ -29,8 +31,16 @@ docker compose up -d postgres
 
 ### Step 2 – Start backend (Quarkus Dev Mode)
 
+If you use a local PostgreSQL on `5432`:
+
 ```bash
 ./mvnw quarkus:dev
+```
+
+If you use the Docker PostgreSQL service on `5433`:
+
+```bash
+DEV_DATABASE_URL=jdbc:postgresql://localhost:5433/p2p_db ./mvnw quarkus:dev
 ```
 
 Backend runs on:
@@ -89,6 +99,12 @@ PostgreSQL (Docker)
 
 Already enabled in backend. Restart Quarkus after changing CORS settings.
 
+For deployment, set `CORS_ORIGINS` to the public frontend origin, for example:
+
+```bash
+CORS_ORIGINS=http://16.171.23.58 docker compose up --build -d backend
+```
+
 
 ## 2. Docker Mode (OPTIONAL)
 
@@ -120,6 +136,52 @@ http://localhost:8081
 Docker Backend
         ↓
 PostgreSQL (Docker)
+```
+
+## 3. Flutter Web Deployment
+
+The Flutter frontend reads its backend URL from `API_BASE_URL`.
+
+Build the web frontend locally for a deployed backend:
+
+```bash
+cd frontend
+flutter build web --dart-define=API_BASE_URL=http://SERVER_IP:8081
+cd ..
+```
+
+Copy `frontend/build/web` to the server, or run the same Flutter build command on the server before starting the `web` compose profile. The `web` service serves `./frontend/build/web`; this generated folder is not committed to Git.
+
+Run backend + PostgreSQL on the server:
+
+```bash
+CORS_ORIGINS=http://SERVER_IP docker compose up --build -d backend
+```
+
+Serve the already-built Flutter web output through Nginx:
+
+```bash
+CORS_ORIGINS=http://SERVER_IP docker compose --profile web up -d web
+```
+
+The web app runs on:
+
+```
+http://SERVER_IP
+```
+
+The backend API runs on:
+
+```
+http://SERVER_IP:8081
+```
+
+On AWS, the security group must allow:
+
+```
+HTTP        TCP 80    0.0.0.0/0
+Custom TCP  TCP 8081  0.0.0.0/0
+SSH         TCP 22    your IP only
 ```
 
 ---
@@ -160,7 +222,7 @@ Frontend → http://localhost:8081
 ## Installation
 
 ```bash
-git clone https://git.fiw.fhws.de/ss25ppkompetenztauschp2p/kompetenztauschp2p.git
+git clone https://github.com/Mumtaz203/kompetenztauschp2p.git
 cd kompetenztauschp2p
 ```
 
